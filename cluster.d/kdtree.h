@@ -1,45 +1,77 @@
 /* \author Aaron Brown */
 // Quiz on implementing kd tree
 
-#include "../../render/render.h"
+
+#include "../src.d/render/render.h"
+//#include "../../render/render.h"
 
 
 // Structure to represent node of kd tree
-struct Node
-{
-	std::vector<float> point;
-	int id;
-	Node* left;
-	Node* right;
+struct Node {
 
-	Node(std::vector<float> arr, int setId)
-	:	point(arr), id(setId), left(NULL), right(NULL)
-	{}
+  // Contents of the node, coords & ID
+  std::vector<float> point;
+  int id;
+
+  // Pointer to the attached nodes
+  Node* left;
+  Node* right;
+  
+  // Node constructor
+  Node (std::vector<float> arr, int setId)
+     :	point(arr), id(setId), left(NULL), right(NULL) {}
 };
 
-struct KdTree
-{
-	Node* root;
+struct KdTree {
+  Node* root;
+  
+  KdTree() : root (NULL) {}
+  
+  // Arguments:
+  //  id: numeric count of point in the cloud (index)
+  //  point: xyz coordinates point
+  //
+  void insert (std::vector<float> point, int id)
+  {
+    // TODO: Fill in this function to insert a new point into the tree
+    // the function should create a new node and place correctly with in the root 
+    insertHelper (&root, 0,  point, id) ;
+    return;
+  }
+  
 
-	KdTree()
-	: root(NULL)
-	{}
+  // This is s recursive function
+  void insertHelper (Node** node, uint depth, std::vector<float> point, int id) {
 
-	void insert(std::vector<float> point, int id)
-	{
-		// TODO: Fill in this function to insert a new point into the tree
-		// the function should create a new node and place correctly with in the root 
+    if (*node == nullptr) {
 
-	}
+      // Create and assign the new node
+      *node = new Node (point, id);
+      
+    } else {
 
-	// return a list of point ids in the tree that are within distance of target
-	std::vector<int> search(std::vector<float> target, float distanceTol)
-	{
-		std::vector<int> ids;
-		return ids;
-	}
-	
+      // Compare based on x[0]/y[1]
+      uint Zero1 = depth % 2;
 
+      if (point[Zero1] < ((*node)->point[Zero1])) {
+	// Go left
+	insertHelper (&((*node)->left), 1+depth, point, id);
+
+      } else {
+	// Go right
+	insertHelper (&((*node)->right), 1+depth, point, id);
+      }
+    }
+
+    return;
+  }
+  
+  // return a list of point ids in the tree that are within distance of target
+  std::vector<int> search(std::vector<float> target, float distanceTol)
+  {
+    std::vector<int> ids;
+    return ids;
+  }
 };
 
 
