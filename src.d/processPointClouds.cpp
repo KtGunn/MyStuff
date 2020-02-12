@@ -43,7 +43,6 @@ template<typename PointT>
 std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<PointT>::SeparateClouds(pcl::PointIndices::Ptr inliers, typename pcl::PointCloud<PointT>::Ptr cloud)
 {
   // TODO: Create two new point clouds, one cloud with obstacles and other with segmented plane
-  std::cout << " B 1\n";
   typename pcl::PointCloud<PointT>::Ptr road (new pcl::PointCloud<PointT>());
   typename pcl::PointCloud<PointT>::Ptr obstacles (new pcl::PointCloud<PointT>());
 
@@ -51,7 +50,6 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT
       road->points.push_back(cloud->points[ind]);
   }
 
-std::cout << " B 2\n";
   pcl::ExtractIndices<pcl::PointXYZ> extractor;
   extractor.setInputCloud (cloud);
   extractor.setIndices (inliers);
@@ -69,29 +67,24 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT
 {
     // Time segmentation process
     auto startTime = std::chrono::steady_clock::now();
-std::cout <<  " A 1\n";
     // TODO:: Fill in this function to find inliers for the cloud.
     pcl::ModelCoefficients::Ptr coefficients {new pcl::ModelCoefficients};
 	pcl::PointIndices::Ptr inliers {new pcl::PointIndices};
 
-std::cout <<  " A 2\n";
     pcl::SACSegmentation<pcl::PointXYZ> seg;
     seg.setOptimizeCoefficients (true);
     seg.setModelType (pcl::SACMODEL_PLANE);
     seg.setMethodType (pcl::SAC_RANSAC);
-std::cout <<  " A 3\n";
+
     seg.setMaxIterations (maxIterations);
     seg.setDistanceThreshold (distanceThreshold);
 
-std::cout <<  " A 4\n";
     seg.setInputCloud (cloud);
     seg.segment (*inliers, *coefficients);
 
-std::cout <<  " A 5\n";
     if (inliers->indices.size() == 0 ) {
         std::cout << "Sorry, inliers size is 0\n";
     }
-std::cout <<  " A 6\n";
     std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> segResult = SeparateClouds(inliers,cloud);
 
 
@@ -102,7 +95,8 @@ std::cout <<  " A 6\n";
     return segResult;
 }
 
-std::unordered_set<int> myRansac(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int maxIterations, float distanceTol)
+template<typename PointT>
+std::unordered_set<int> KtGPlaneRansac(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceTol)
 {
 	std::unordered_set<int> inliersResult;
 	srand(time(NULL));
