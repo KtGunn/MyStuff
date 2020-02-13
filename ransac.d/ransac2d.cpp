@@ -1,11 +1,20 @@
 /* \author Aaron Brown */
 // Quiz on implementing simple RANSAC line fitting
 
-#include "../../render/render.h"
+#include "../src.d/render/render.h"
+#include "../src.d/processPointClouds.h"
 #include <unordered_set>
-#include "../../processPointClouds.h"
+
 // using templates for processPointClouds so also include .cpp to help linker
-#include "../../processPointClouds.cpp"
+#include "../src.d/processPointClouds.cpp"
+
+// 200213:
+const static std::string sthighwayFile ("../../src.d/sensors/data/pcd/simpleHighway.pcd");
+
+
+//#include "../../render/render.h"
+//#include "../../processPointClouds.h"
+//#include "../../processPointClouds.cpp"
 
 // [KTG]
 // #include <random>
@@ -50,7 +59,8 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr CreateData()
 pcl::PointCloud<pcl::PointXYZ>::Ptr CreateData3D()
 {
 	ProcessPointClouds<pcl::PointXYZ> pointProcessor;
-	return pointProcessor.loadPcd("../../../sensors/data/pcd/simpleHighway.pcd");
+  return pointProcessor.loadPcd ( sthighwayFile );
+  //return pointProcessor.loadPcd("../../../sensors/data/pcd/simpleHighway.pcd");
 }
 
 
