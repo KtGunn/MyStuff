@@ -70,7 +70,62 @@ struct KdTree {
   std::vector<int> search(std::vector<float> target, float distanceTol)
   {
     std::vector<int> ids;
+
+    // Initialize
+    Node* ptNode = root;
+    float tx = target[0];
+    float ty = target[1];
+    
+    searchHelper (root, target,  distanceTol);
+      
     return ids;
+  }
+
+  // ONLY print out results
+  void searchHelper (Node* ptNode, std::vector<float> target, float dTol)
+  {
+
+    // SUPER important
+    if ( ptNode == nullptr) {
+      return;
+    }
+
+    // Initialize
+    float tx = target[0];
+    float ty = target[1];
+    
+    if ( ptNode->point[0] - tx > dTol ) {
+      // We are right of target -> go smaller/left
+      searchHelper (ptNode->left, target, dTol);
+
+    } else if ( tx - ptNode->point[0] > dTol ) {
+      // We are left of target -> go bigger/right
+      searchHelper (ptNode->right, target, dTol);
+
+    } else {
+      // We are W/I x-range
+      //
+      if ( ptNode->point[1] - ty > dTol) {
+	// We are above target -> go smaller/left
+	searchHelper (ptNode->left, target, dTol);
+
+      } else if ( ty - ptNode->point[1] > dTol ) {
+	// We are below target -> go bigger/right
+	searchHelper (ptNode->right, target, dTol);
+	
+      } else {
+	// We are INSIDE box
+	// if ||target - point|| < dTol; add index to vector
+	// Go left
+	// Go right also
+	std::cout << " Got one id=" << ptNode->id << std::endl;
+
+	searchHelper (ptNode->right, target, dTol);
+	searchHelper (ptNode->left, target, dTol);
+      }
+    }
+
+    return;
   }
 };
 
