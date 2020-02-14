@@ -8,18 +8,18 @@
 
 // Structure to represent node of kd tree
 struct Node {
-  
+
   // Contents of the node, coords & ID
   std::vector<float> point;
   int id;
-  
+
   // Pointer to the attached nodes
   Node* left;
   Node* right;
   
   // Node constructor
   Node (std::vector<float> arr, int setId)
-  :	point(arr), id(setId), left(NULL), right(NULL) {}
+     :	point(arr), id(setId), left(NULL), right(NULL) {}
 };
 
 struct KdTree {
@@ -76,58 +76,60 @@ struct KdTree {
     float tx = target[0];
     float ty = target[1];
     
-    uint counter = 0;
-    searchHelper (root, target,  distanceTol, counter);
-    std::cout << " Count stands at " << counter << std::endl;
-    
+    std::cout << " TOP OF SEARCH\n";
+    uint depth = 0;
+    searchHelper (root, target, distanceTol, depth, ids);
+
+    for (int index : ids ) {
+      std::cout << " ids = " << index << std::endl;
+    }
     return ids;
   }
   
   // ONLY print out results
-  void searchHelper (Node* ptNode, std::vector<float> target, float dTol, uint& counter)
+  void searchHelper (Node* ptNode, std::vector<float> target, float dTol, uint depth, std::vector<int>& ids)
   {
-    ++counter;
-      
+    std::cout << " In Helper\n";
     // SUPER important
     if ( ptNode == nullptr) {
       return;
     }
     
+    std::cout << "   more in helper\n";
+
     // Initialize
     float tx = target[0];
     float ty = target[1];
-    
-    if ( ptNode->point[0] - tx > dTol ) {
-      // We are right of target -> go smaller/left
-      searchHelper (ptNode->left, target, dTol, counter);
-      
-    } else if ( tx - ptNode->point[0] > dTol ) {
-      // We are left of target -> go bigger/right
-      searchHelper (ptNode->right, target, dTol, counter);
-      
-    } else {
-      // We are W/I x-range
-      //
-      if ( ptNode->point[1] - ty > dTol) {
-        // We are above target -> go smaller/left
-        searchHelper (ptNode->left, target, dTol, counter);
-        
-      } else if ( ty - ptNode->point[1] > dTol ) {
-        // We are below target -> go bigger/right
-        searchHelper (ptNode->right, target, dTol, counter);
-        
-      } else {
-        // We are INSIDE box
-        // if ||target - point|| < dTol; add index to vector
-        // Go left
-        // Go right also
-        std::cout << " Got one id=" << ptNode->id << std::endl;
-        
-        searchHelper (ptNode->right, target, dTol, counter);
-        searchHelper (ptNode->left, target, dTol, counter);
+
+    float nx = ptNode->point[0];
+    float ny = ptNode->point[1];
+
+    if ( fabs(tx-nx) < dTol && fabs(ty-ny) < dTol) {
+      std::cout << "  INSIDE BOX\n";
+      // We're with the square box
+      float dx = tx-nx;
+      float dy = ty-ny;
+      if ( sqrt ( dx*dx + dy*dy ) < dTol ) {
+        // We're with in the radius of dTol -- we got one!
+        ids.push_back (ptNode->id);
       }
     }
-    
+
+
+    uint Zero1 = depth % 2;
+    float tc = target[Zero1];
+
+    // std::cout << " nodeC = " <<  ptNode->point[Zero1] << " targetC = " << tc << " tol= " <<  dTol << std::endl;
+
+    if ( ptNode->point[Zero1] - tc < dTol ) {
+      // We are right of target -> go smaller/left
+      searchHelper (ptNode->left, target, dTol, depth+1, ids);
+    } 
+    if ( tc - ptNode->point[Zero1] < dTol ) {
+      // We are left of target -> go bigger/right
+      searchHelper (ptNode->right, target, dTol, depth+1, ids);
+    }
+
     return;
   }
 };
