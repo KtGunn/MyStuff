@@ -73,30 +73,27 @@ struct KdTree {
     
     // Initialize
     Node* ptNode = root;
-    float tx = target[0];
-    float ty = target[1];
     
-    std::cout << " TOP OF SEARCH\n";
     uint depth = 0;
-    searchHelper (root, target, distanceTol, depth, ids);
+    uint counter = 0;
+    searchHelper (root, target, distanceTol, depth, ids, counter);
 
-    for (int index : ids ) {
-      std::cout << " ids = " << index << std::endl;
-    }
+    std::cout << " We recursed " << counter << " times\n";
     return ids;
   }
   
   // ONLY print out results
-  void searchHelper (Node* ptNode, std::vector<float> target, float dTol, uint depth, std::vector<int>& ids)
+    void searchHelper (Node* ptNode, std::vector<float> target, float dTol, uint depth, std::vector<int>& ids, uint& counter)
   {
-    std::cout << " In Helper\n";
+
+    // For laughs & giggles we count how often the recurse
+    ++counter;
+    
     // SUPER important
     if ( ptNode == nullptr) {
       return;
     }
     
-    std::cout << "   more in helper\n";
-
     // Initialize
     float tx = target[0];
     float ty = target[1];
@@ -105,7 +102,7 @@ struct KdTree {
     float ny = ptNode->point[1];
 
     if ( fabs(tx-nx) < dTol && fabs(ty-ny) < dTol) {
-      std::cout << "  INSIDE BOX\n";
+
       // We're with the square box
       float dx = tx-nx;
       float dy = ty-ny;
@@ -115,19 +112,16 @@ struct KdTree {
       }
     }
 
-
     uint Zero1 = depth % 2;
     float tc = target[Zero1];
 
-    // std::cout << " nodeC = " <<  ptNode->point[Zero1] << " targetC = " << tc << " tol= " <<  dTol << std::endl;
-
     if ( ptNode->point[Zero1] - tc < dTol ) {
       // We are right of target -> go smaller/left
-      searchHelper (ptNode->left, target, dTol, depth+1, ids);
+	searchHelper (ptNode->left, target, dTol, depth+1, ids, counter);
     } 
     if ( tc - ptNode->point[Zero1] < dTol ) {
       // We are left of target -> go bigger/right
-      searchHelper (ptNode->right, target, dTol, depth+1, ids);
+	searchHelper (ptNode->right, target, dTol, depth+1, ids, counter);
     }
 
     return;
