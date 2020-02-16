@@ -40,7 +40,8 @@ typename pcl::PointCloud<PointT>::Ptr ProcessPointClouds<PointT>::FilterCloud(ty
 
 
 template<typename PointT>
-std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<PointT>::SeparateClouds(pcl::PointIndices::Ptr inliers, typename pcl::PointCloud<PointT>::Ptr cloud)
+std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr>
+    ProcessPointClouds<PointT>::SeparateClouds (pcl::PointIndices::Ptr inliers, typename pcl::PointCloud<PointT>::Ptr cloud)
 {
   // TODO: Create two new point clouds, one cloud with obstacles and other with segmented plane
   typename pcl::PointCloud<PointT>::Ptr road (new pcl::PointCloud<PointT>());
@@ -63,109 +64,134 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT
 
 
 template<typename PointT>
-std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> ProcessPointClouds<PointT>::SegmentPlane(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceThreshold)
+    std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr>
+    ProcessPointClouds<PointT>::SegmentPlane(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceThreshold)
 {
     // Time segmentation process
     auto startTime = std::chrono::steady_clock::now();
     // TODO:: Fill in this function to find inliers for the cloud.
     pcl::ModelCoefficients::Ptr coefficients {new pcl::ModelCoefficients};
-	pcl::PointIndices::Ptr inliers {new pcl::PointIndices};
+    pcl::PointIndices::Ptr inliers {new pcl::PointIndices};
 
-    pcl::SACSegmentation<pcl::PointXYZ> seg;
-    seg.setOptimizeCoefficients (true);
-    seg.setModelType (pcl::SACMODEL_PLANE);
-    seg.setMethodType (pcl::SAC_RANSAC);
+    // 
+    std::unordered_set<int> inlierPoints;
+    std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> segResult;
 
-    seg.setMaxIterations (maxIterations);
-    seg.setDistanceThreshold (distanceThreshold);
+    const bool PCL = false;
 
-    seg.setInputCloud (cloud);
-    seg.segment (*inliers, *coefficients);
+    if (PCL) {
+	//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+	// PCL ransac
+	pcl::SACSegmentation<pcl::PointXYZ> seg;
+	seg.setOptimizeCoefficients (true);
+	seg.setModelType (pcl::SACMODEL_PLANE);
+	seg.setMethodType (pcl::SAC_RANSAC);
+	
+	seg.setMaxIterations (maxIterations);
+	seg.setDistanceThreshold (distanceThreshold);
+	
+	seg.setInputCloud (cloud);
+	seg.segment (*inliers, *coefficients);
+	
+	if (inliers->indices.size() == 0 ) {
+	    std::cout << "Sorry, inliers size is 0\n";
+	}
 
-    if (inliers->indices.size() == 0 ) {
-        std::cout << "Sorry, inliers size is 0\n";
+    } else {
+	// Call the custom RANSAC funtion
+	inlierPoints = ktRansac ( cloud, maxIterations, distanceThreshold);
+
+	// This copy operation seems very inefficient
+	for ( int ptId : inlierPoints ) {
+	    inliers->indices.push_back (ptId);
+	}
     }
-    std::pair<typename pcl::PointCloud<PointT>::Ptr, typename pcl::PointCloud<PointT>::Ptr> segResult = SeparateClouds(inliers,cloud);
-
-
+    
+    segResult = SeparateClouds (inliers,cloud);
+    
     auto endTime = std::chrono::steady_clock::now();
     auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
     std::cout << "plane segmentation took " << elapsedTime.count() << " milliseconds" << std::endl;
-
+    
     return segResult;
 }
 
+
+//******************************************************************************************************************
+// My implementation of RANSAC
+//
 template<typename PointT>
-std::unordered_set<int> KtGPlaneRansac(typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceTol)
+    std::unordered_set<int> ProcessPointClouds<PointT>::ktRansac (typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceTol)
 {
-	std::unordered_set<int> inliersResult;
-	srand(time(NULL));
-	
-	// For max iterations 
-	for (short n=0; n<maxIterations; n++) {
-
-		// Randomly sample subset and fit line
-		std::unordered_set<int> testSet;
-		while (testSet.size() < 3) {
-			int index = rand() % (cloud->points.size());
-			if ( testSet.count(index) > 0 ) {
-				continue;
-			} else {
-				testSet.insert(index);
-			}
-		}
-
-		auto it = testSet.begin();
-		pcl::PointXYZ p1 = cloud->points[*it]; 		it++;
-		pcl::PointXYZ p2 = cloud->points[*it];		it++;
-		pcl::PointXYZ p3 = cloud->points[*it];
-
-	    // Unit vector |P2-P1|
-		float a = p2.x-p1.x;
-		float b = p2.y-p1.y;
-		float c = p2.z-p1.z;
-		float denom = sqrt(a*a+b*b+c*c);
-		a /= denom;
-		b /= denom;
-		c /= denom;
-
-	    // Unit vector |P3-P1|
-	    float d = p3.x-p1.x;
-		float e = p3.y-p1.y;
-		float f = p3.z-p1.z;
-		denom = sqrt(d*d+e*e+f*f);
-		d /= denom;
-		e /= denom;
-		f /= denom;
-
-		// Normal vector (uv1 x uv2)
-		float A = b*f-e*c; // i
-		float B = c*d-a*f; // j
-		float C = a*e-b*d; // k
-		float D = A*p1.x + B*p1.y + C*p1.z;
-		denom = sqrt (A*A+B*B+C*C);
-
-	    // Measure distance between every point and fitted line
-		for (short k=0; k<cloud->size(); k++) {
-
-			// Next could point to test
-			pcl::PointXYZ pt = cloud->points[k];
-			float dist = fabs (A*pt.x + B*pt.y + C*pt.z + D)/denom;
-			
-			// If distance is smaller than threshold count it as inlier
-			if ( dist <= distanceTol ) {
-				testSet.insert(k);
-			}
-		}
-
-	    // Return indicies of inliers from fitted line with most inliers
-	    if ( inliersResult.size() < testSet.size() ) {
-			inliersResult = testSet;
-		}
-	}
+    std::unordered_set<int> inliersResult;
+    srand (time(NULL));
     
-	return inliersResult;
+    // For max iterations 
+    for (short n=0; n<maxIterations; n++) {
+	
+	// Randomly sample subset and fit line
+	std::unordered_set<int> testSet;
+	while (testSet.size() < 3) {
+	    int index = rand() % (cloud->points.size());
+	    if ( testSet.count(index) > 0 ) {
+		continue;
+	    } else {
+		testSet.insert(index);
+	    }
+	}
+	
+	auto it = testSet.begin();
+	pcl::PointXYZ p1 = cloud->points[*it]; it++;
+	pcl::PointXYZ p2 = cloud->points[*it]; it++;
+	pcl::PointXYZ p3 = cloud->points[*it];
+	
+	// Unit vector |P2-P1|
+	float a = p2.x-p1.x;
+	float b = p2.y-p1.y;
+	float c = p2.z-p1.z;
+	float denom = sqrt(a*a+b*b+c*c);
+	a /= denom;
+	b /= denom;
+	c /= denom;
+	
+	// Unit vector |P3-P1|
+	float d = p3.x-p1.x;
+	float e = p3.y-p1.y;
+	float f = p3.z-p1.z;
+	denom = sqrt(d*d+e*e+f*f);
+	d /= denom;
+	e /= denom;
+	f /= denom;
+	
+	// Normal vector (uv1 x uv2)
+	float A = b*f-e*c; // i
+	float B = c*d-a*f; // j
+	float C = a*e-b*d; // k
+	float D = A*p1.x + B*p1.y + C*p1.z;
+	denom = sqrt (A*A+B*B+C*C);
+	
+	// Measure distance between every point and fitted line
+	for (short k=0; k<cloud->size(); k++) {
+	    
+	    // Next could point to test
+	    pcl::PointXYZ pt = cloud->points[k];
+	    float dist = fabs (A*pt.x + B*pt.y + C*pt.z + D)/denom;
+	    
+	    // If distance is smaller than threshold count it as inlier
+	    if ( dist <= distanceTol ) {
+		testSet.insert(k);
+	    }
+	}
+	
+	// Return indicies of inliers from fitted line with most inliers
+	if ( inliersResult.size() < testSet.size() ) {
+	    inliersResult = testSet;
+	}
+    }
+    
+    return inliersResult;
 }
+//***MY RANSAC******************************************************************************************************
 
 
 template<typename PointT>
