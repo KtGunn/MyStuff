@@ -1,8 +1,8 @@
 /* author Aaron Brown */
 // Quiz on implementing simple RANSAC line fitting
 
-#include "../src.d/render/render.h"
-#include "../src.d/render/box.h"
+#include "../src/render/render.h"
+#include "../src/render/box.h"
 
 // Works in API
 //#include "../../render/render.h"
