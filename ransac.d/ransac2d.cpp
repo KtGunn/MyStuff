@@ -1,15 +1,15 @@
 /* \author Aaron Brown */
 // Quiz on implementing simple RANSAC line fitting
 
-#include "../src.d/render/render.h"
-#include "../src.d/processPointClouds.h"
+#include "../src/render/render.h"
+#include "../src/processPointClouds.h"
 #include <unordered_set>
 
 // using templates for processPointClouds so also include .cpp to help linker
-#include "../src.d/processPointClouds.cpp"
+#include "../src/processPointClouds.cpp"
 
 // 200213:
-const static std::string sthighwayFile ("../../src.d/sensors/data/pcd/simpleHighway.pcd");
+const static std::string sthighwayFile ("../../src/sensors/data/pcd/simpleHighway.pcd");
 
 
 //#include "../../render/render.h"
