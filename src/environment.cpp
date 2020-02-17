@@ -5,6 +5,11 @@
 #include "sensors/lidar.h"
 #include "render/render.h"
 #include "processPointClouds.h"
+
+// KD-tree implementation
+#include "kd3Dtree.h"
+
+
 // using templates for processPointClouds so also include .cpp to help linker
 #include "processPointClouds.cpp"
 
@@ -45,26 +50,31 @@ void simpleHighway(pcl::visualization::PCLVisualizer::Ptr& viewer)
     bool renderScene = false; // 'false'==highway & cars not shown
     std::vector<Car> cars = initHighway(renderScene, viewer);
     
-    // TODO:: Create lidar sensor 
+    // DONE -- TODO:: Create lidar sensor 
     Lidar* lid = new Lidar (cars, 0.0);
  
-    // TODO:: Create point processor
-    std::cout << " Creating pt cloud proc\n";
+    // DONE -- TODO:: Create point processor
     ProcessPointClouds<pcl::PointXYZ>* myPcProcessor = new ProcessPointClouds<pcl::PointXYZ>;
-    std::cout << " Createing done \n";
-
+    
     pcl::PointCloud<pcl::PointXYZ>::Ptr inputCloud = lid->scan ();
-    //renderRays (viewer, lid->position, inputCloud);
-    //renderPointCloud (viewer, inputCloud, "InCloud");
+
+    if (false) {
+	renderRays (viewer, lid->position, inputCloud);
+	renderPointCloud (viewer, inputCloud, "InCloud");
+    }
 
     // 200209: 40iter/0.15 leaves a few points on the road; obs are OK
     //         100iter/0.2 is perfect
     std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr> segmentCloud = 
-       myPcProcessor->SegmentPlane (inputCloud,40, 0.15);
+	myPcProcessor->SegmentPlane (inputCloud,40, 0.15);
+    
+    renderPointCloud (viewer, segmentCloud.first, "First", Color (1,0,0));
+    renderPointCloud (viewer, segmentCloud.second, "Obies", Color (0,0,1));
 
-       renderPointCloud (viewer, segmentCloud.first, "First", Color (1,0,0));
-       renderPointCloud (viewer, segmentCloud.second, "Obies", Color (0,0,1));
-       return;
+    // Now calling for clustering the obstacles cloud
+    myPcProcessor->Clustering (segmentCloud.second, 2.0, 10, 200);
+
+    return;
 }
 
 

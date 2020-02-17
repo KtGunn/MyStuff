@@ -2,7 +2,7 @@
 // Quiz on implementing kd tree
 
 
-#include "../src.d/render/render.h"
+#include "../src/render/render.h"
 //#include "../../render/render.h"
 
 
