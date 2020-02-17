@@ -87,6 +87,9 @@ void simpleHighway(pcl::visualization::PCLVisualizer::Ptr& viewer)
     renderPointCloud (viewer, pObCloud , vNames[index], vCols[index]);
     index++;
 
+    Box bb = myPcProcessor->BoundingBox (pObCloud);
+    renderBox (viewer, bb, index);
+    
     if (index >= vCols.size() || index >= vNames.size()) {
       std::cout << "Ran out of names or colors. Add more...\n";
       break;
