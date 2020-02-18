@@ -47,9 +47,28 @@ void cityBlock (pcl::visualization::PCLVisualizer::Ptr& viewer )
 
   ProcessPointClouds<pcl::PointXYZI>* ptProcessor = new ProcessPointClouds<pcl::PointXYZI>;
   pcl::PointCloud<pcl::PointXYZI>::Ptr inputCloud = ptProcessor->loadPcd ("../src/sensors/data/pcd/data_1/0000000000.pcd");
-  renderPointCloud (viewer,inputCloud,"CityBlock");
+  //renderPointCloud (viewer,inputCloud,"CityBlock");
   // This produces a 'red' cloud
   //renderPointCloud (viewer,inputCloud,"CityBlock", Color(1,0,0));
+
+  Eigen::Vector4f lowEigen (-30.0, -26.0, -5.0, 1.0);
+  Eigen::Vector4f highEigen (30.0, 26.0, 15.0, 1.0);
+
+  Box roi;
+  roi.x_min = -30.0;
+  roi.x_max = 30.0;
+
+  roi.y_min = -26.0;
+  roi.y_max = 26.0;
+
+  roi.z_min = -5.0;
+  roi.z_max = 15.0;
+  renderBox (viewer,roi,0);
+  
+  pcl::PointCloud<pcl::PointXYZI>::Ptr filteredCloud = ptProcessor->FilterCloud (inputCloud, 0.5, lowEigen, highEigen);
+
+  renderPointCloud (viewer, filteredCloud, "City_Blocked");
+
   return;
 }
 
