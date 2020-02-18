@@ -75,11 +75,11 @@ int
 	// cloud
 	seg.setInputCloud (cloud_filtered);
 	seg.segment (*inliers, *coefficients);
-	if (inliers->indices.size () == 0)
-	    {
-		std::cerr << "Could not estimate a planar model for the given dataset." << std::endl;
-		break;
-	    }
+
+	if (inliers->indices.size () == 0) {
+	    std::cerr << "Could not estimate a planar model for the given dataset." << std::endl;
+	    break;
+	}
 	
 	// Extract the inliers
 	extract.setInputCloud (cloud_filtered);
@@ -101,6 +101,7 @@ int
 	i++;
     }
 
+    // Let's see the cloud
     pcl::visualization::CloudViewer viewer ("Table viewer");
     viewer.showCloud ( theCloud );
     while ( !viewer.wasStopped() ) {
