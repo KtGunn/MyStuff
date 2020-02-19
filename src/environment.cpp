@@ -51,8 +51,8 @@ void cityBlock (pcl::visualization::PCLVisualizer::Ptr& viewer )
   // This produces a 'red' cloud
   //renderPointCloud (viewer,inputCloud,"CityBlock", Color(1,0,0));
 
-  Eigen::Vector4f lowEigen (-30.0, -26.0, -5.0, 1.0);
-  Eigen::Vector4f highEigen (30.0, 26.0, 15.0, 1.0);
+  Eigen::Vector4f lowEigen (-10.0, -16.0, -5.0, 1.0);
+  Eigen::Vector4f highEigen (10.0, 16.0, 15.0, 1.0);
 
   Box roi;
   roi.x_min = -30.0;
