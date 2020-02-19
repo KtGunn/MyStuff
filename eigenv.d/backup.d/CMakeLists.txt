@@ -6,6 +6,7 @@ cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 project(extract_indices)
 
 find_package(PCL 1.7 REQUIRED)
+add_definitions (-std=c++11)
 
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})
