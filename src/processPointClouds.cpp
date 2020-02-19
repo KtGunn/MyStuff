@@ -25,12 +25,10 @@ template<typename PointT>
 typename pcl::PointCloud<PointT>::Ptr ProcessPointClouds<PointT>::FilterCloud (typename pcl::PointCloud<PointT>::Ptr cloud,
                                                                                float filterRes, Eigen::Vector4f minPoint, Eigen::Vector4f maxPoint)
 {
-  
   // Time segmentation process
   auto startTime = std::chrono::steady_clock::now();
   
   // TODO:: Fill in the function to do voxel grid point reduction and region based filtering
-
   pcl::VoxelGrid<PointT> sor;
   sor.setInputCloud (cloud);
   sor.setLeafSize (filterRes,filterRes,filterRes);
@@ -52,11 +50,37 @@ typename pcl::PointCloud<PointT>::Ptr ProcessPointClouds<PointT>::FilterCloud (t
   cBox.filter (*filteredCroppedCloud);
   std::cout << " Box filtered size = " << filteredCroppedCloud->points.size() << std::endl;
 
+  pcl::CropBox<PointT> cBroof (true); // true==we want indices
+  cBroof.setInputCloud (filteredCroppedCloud);
+  cBroof.setMin (Eigen::Vector4f(-2,-3,-2,1));
+  cBroof.setMax (Eigen::Vector4f(4,3,1,1));
+  std::vector<int> vIndices;
+  cBroof.filter (vIndices);
+  std::cout << " We got " << vIndices.size() << std::endl;
+  
+  // Create the indices object
+  pcl::PointIndices::Ptr pInds {new pcl::PointIndices};
+  for (int i: vIndices) {
+    pInds->indices.push_back(i);
+  }
+
+  // Get the Extractor object going
+  pcl::ExtractIndices<PointT> extractor;
+  extractor.setInputCloud (filteredCroppedCloud);
+  extractor.setIndices (pInds);
+  extractor.setNegative(true);
+
+  typename pcl::PointCloud<PointT>::Ptr finalCloud (new pcl::PointCloud<PointT>());
+
+  extractor.filter (*finalCloud);
+  
+
   auto endTime = std::chrono::steady_clock::now();
   auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
   std::cout << "filtering took " << elapsedTime.count() << " milliseconds" << std::endl;
   
-  return filteredCroppedCloud;
+  return finalCloud;
+  //return filteredCroppedCloud;
   //return filteredCloud;
   
 }
