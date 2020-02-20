@@ -47,15 +47,17 @@ void cityBlock (pcl::visualization::PCLVisualizer::Ptr& viewer )
 
   ProcessPointClouds<pcl::PointXYZI>* ptProcessor = new ProcessPointClouds<pcl::PointXYZI>;
   pcl::PointCloud<pcl::PointXYZI>::Ptr inputCloud = ptProcessor->loadPcd ("../src/sensors/data/pcd/data_1/0000000000.pcd");
-  //renderPointCloud (viewer,inputCloud,"CityBlock");
 
-  float fwdX  = 30.0;
-  float sideY = 8.0;
-  Eigen::Vector4f lowEigen (-15.0, -0.8*sideY, -2.0, 1.0);
-  Eigen::Vector4f highEigen (fwdX, sideY, 1.0, 1.0);
+  pcl::PointCloud<pcl::PointXYZI>::Ptr filteredCloud;
 
-  if (false) {
-      // This was used to visualize the ROI
+  if (true) {
+    float fwdX  = 30.0;
+    float sideY = 8.0;
+    Eigen::Vector4f lowEigen (-1*fwdX, -0.8*sideY, -2.0, 1.0);
+    Eigen::Vector4f highEigen (fwdX, sideY, 1.0, 1.0);
+    
+    if (false) {
+      // This was used to visualize the cropping ROI
       Box roi;
       roi.x_min = -30.0;
       roi.x_max = 30.0;
@@ -66,32 +68,54 @@ void cityBlock (pcl::visualization::PCLVisualizer::Ptr& viewer )
       roi.z_min = -5.0;
       roi.z_max = 15.0;
       renderBox (viewer,roi,0);
+    }
+
+    if (true) {
+      // This was used to visualize the roof top cropping ROI
+      Box roi;
+      roi.x_min = -2;
+      roi.x_max = 2.6;
+      
+      roi.y_min = -1.7;
+      roi.y_max = 1.7;
+      
+      roi.z_min = -2;
+      roi.z_max = 1;
+      renderBox (viewer,roi,2, Color (0.124, 0.58, 0.620));
+    }
+    
+    float resolution = 0.15;
+    filteredCloud = ptProcessor->FilterCloud (inputCloud, resolution,
+                                              lowEigen, highEigen);
+    renderPointCloud (viewer, filteredCloud, "City_Blocked");
+
+  } else {
+
+    // Render the full point cloude
+    renderPointCloud (viewer,inputCloud,"CityBlock");
   }
   
-  float resolution = 0.30;
-  pcl::PointCloud<pcl::PointXYZI>::Ptr filteredCloud = ptProcessor->FilterCloud (inputCloud, resolution,
-										 lowEigen, highEigen);
-
-  //renderPointCloud (viewer, filteredCloud, "City_Blocked");
-
-  float distTol = 0.25;
-  int minSize = 10;
-  int maxSize = 200;
-  std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> vClusters = 
-	      ptProcessor->Clustering (filteredCloud, distTol, minSize, maxSize);
-
-  int count = 1;
-  int vI = 0;
-  std::vector<Color> vCols({Color(1,0,0), Color(0,1,0), Color(0,0,1), Color(0.5,0.5,0.5), Color(0.75,0.25,0.5)});
-  for (pcl::PointCloud<pcl::PointXYZI>::Ptr pO : vClusters) {
+  if (false) {
+    float distTol = 0.25;
+    int minSize = 10;
+    int maxSize = 200;
+    std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> vClusters = 
+      ptProcessor->Clustering (filteredCloud, distTol, minSize, maxSize);
+    
+    int count = 1;
+    int vI = 0;
+    std::vector<Color> vCols({Color(1,0,0), Color(0,1,0), Color(0,0,1), Color(0.5,0.5,0.5), Color(0.75,0.25,0.5)});
+    for (pcl::PointCloud<pcl::PointXYZI>::Ptr pO : vClusters) {
       // render the cloud, eachone in a different colour
       if (false) {
-	  renderPointCloud (viewer, pO , "Cloud_"+std::to_string(vI), Color(1,1,1));
+        renderPointCloud (viewer, pO , "Cloud_"+std::to_string(vI), Color(1,1,1));
       } else {
-	  renderPointCloud (viewer, pO , "Cloud_"+std::to_string(vI), vCols[vI % vCols.size()]);
+        renderPointCloud (viewer, pO , "Cloud_"+std::to_string(vI), vCols[vI % vCols.size()]);
       }
       vI++;
+    }
   }
+
   return;
 }
 
