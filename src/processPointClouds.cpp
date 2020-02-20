@@ -50,14 +50,35 @@ typename pcl::PointCloud<PointT>::Ptr ProcessPointClouds<PointT>::FilterCloud (t
   cBox.filter (*filteredCroppedCloud);
   std::cout << " Box filtered size = " << filteredCroppedCloud->points.size() << std::endl;
 
+
   pcl::CropBox<PointT> cBroof (true); // true==we want indices
   cBroof.setInputCloud (filteredCroppedCloud);
-  cBroof.setMin (Eigen::Vector4f(-2,-3,-2,1));
-  cBroof.setMax (Eigen::Vector4f(4,3,1,1));
+
+  Eigen::Vector4f minRoof (-2,-3,-2,1);
+  Eigen::Vector4f maxRoof(4,3,1,1);
+  cBroof.setMin (minRoof);
+  cBroof.setMax (maxRoof);
+  //cBroof.setMin (Eigen::Vector4f(-2,-3,-2,1));
+  //cBroof.setMax (Eigen::Vector4f(4,3,1,1));
   std::vector<int> vIndices;
   cBroof.filter (vIndices);
   std::cout << " We got " << vIndices.size() << std::endl;
   
+  if (true) {
+      // Let's visualize the roof top box
+      Box roi;
+      roi.x_min = -30.0;
+      roi.x_max = 30.0;
+      
+      roi.y_min = -26.0;
+      roi.y_max = 26.0;
+      
+      roi.z_min = -5.0;
+      roi.z_max = 15.0;
+      // We'd need to pass the viewer in
+      // renderBox (viewer,roi,0);
+  }
+
   // Create the indices object
   pcl::PointIndices::Ptr pInds {new pcl::PointIndices};
   for (int i: vIndices) {
@@ -219,20 +240,20 @@ std::unordered_set<int> ProcessPointClouds<PointT>::ktRansac (typename pcl::Poin
     
     // Measure distance between every point and fitted line
     for (short k=0; k<cloud->size(); k++) {
-	    
-	    // Next could point to test
-	    pcl::PointXYZ pt = cloud->points[k];
-	    float dist = fabs (A*pt.x + B*pt.y + C*pt.z + D)/denom;
-	    
-	    // If distance is smaller than threshold count it as inlier
-	    if ( dist <= distanceTol ) {
-        testSet.insert(k);
-	    }
+	
+	// Next could point to test
+	pcl::PointXYZ pt = cloud->points[k];
+	float dist = fabs (A*pt.x + B*pt.y + C*pt.z + D)/denom;
+	
+	// If distance is smaller than threshold count it as inlier
+	if ( dist <= distanceTol ) {
+	    testSet.insert(k);
+	}
     }
     
     // Return indicies of inliers from fitted line with most inliers
     if ( inliersResult.size() < testSet.size() ) {
-	    inliersResult = testSet;
+	inliersResult = testSet;
     }
   }
   
@@ -244,7 +265,7 @@ std::unordered_set<int> ProcessPointClouds<PointT>::ktRansac (typename pcl::Poin
 template<typename PointT>
 void ProcessPointClouds<PointT>::Proximity (const int id, typename pcl::PointCloud<PointT>::Ptr cloud,
                                             std::vector<int>& idsCluster, std::map<int,bool>& mapProcd,
-                                            KdTree* tree, float dTol)
+                                            KdTree<PointT>* tree, float dTol)
 {
   // Mark the point by its id, as processed
   mapProcd.insert (std::pair<int,bool>(id, true));
@@ -253,7 +274,7 @@ void ProcessPointClouds<PointT>::Proximity (const int id, typename pcl::PointClo
   idsCluster.push_back (id);
   
   // Search for nearby points
-  pcl::PointXYZ testPoint = cloud->points[id];
+  PointT testPoint = cloud->points[id];
   std::vector<int> nearbyIds = tree->search (testPoint, dTol);
   
   for ( int nearIndex : nearbyIds ) {
@@ -281,12 +302,13 @@ ProcessPointClouds<PointT>::Clustering (typename pcl::PointCloud<PointT>::Ptr cl
   
   /////////////////////////////////////////////////////////////////////////
   // FIRST: create a kd-tree
-  KdTree* tree = new KdTree ();
+  KdTree<PointT>* tree = new KdTree<PointT>();
   
   // Insert the cloud points into the tree
   for (int i=0; i < cloud->size(); i++) {
-    pcl::PointXYZ pt = cloud->points[i];
-    tree->insert (pt,i);
+      //pcl::PointXYZ pt = cloud->points[i];
+      PointT pt = cloud->points[i];
+      tree->insert (pt,i);
   }
   
   
@@ -313,12 +335,12 @@ ProcessPointClouds<PointT>::Clustering (typename pcl::PointCloud<PointT>::Ptr cl
 	    std::cout << " Cluster size = " << idsCluster.size() << std::endl;
 	    
 	    if (idsCluster.size() >= minSize && idsCluster.size() <= maxSize) {
-        // NOT yet compiled
-        typename pcl::PointCloud<PointT>::Ptr newCluster (new pcl::PointCloud<PointT>);
-        for (int id : idsCluster) {
-          newCluster->points.push_back (cloud->points[id]);
-        }
-        clusters.push_back ( newCluster );
+		// NOT yet compiled
+		typename pcl::PointCloud<PointT>::Ptr newCluster (new pcl::PointCloud<PointT>);
+		for (int id : idsCluster) {
+		    newCluster->points.push_back (cloud->points[id]);
+		}
+		clusters.push_back ( newCluster );
 	    }
     }
   }
@@ -326,7 +348,7 @@ ProcessPointClouds<PointT>::Clustering (typename pcl::PointCloud<PointT>::Ptr cl
   auto endTime = std::chrono::steady_clock::now();
   auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
   std::cout << "clustering took " << elapsedTime.count() << " milliseconds and found " <<
-    clusters.size() << " clusters" << std::endl;
+      clusters.size() << " clusters" << std::endl;
   
   return clusters;
 }

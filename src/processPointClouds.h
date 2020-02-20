@@ -43,7 +43,7 @@ public:
     std::unordered_set<int> ktRansac (typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceTol);
 
     // [KTG]
-    void Proximity (const int id, typename pcl::PointCloud<PointT>::Ptr cloud, std::vector<int>& ids, std::map<int,bool>& mapProcd, KdTree* tree, float dTol);
+    void Proximity (const int id, typename pcl::PointCloud<PointT>::Ptr cloud, std::vector<int>& ids, std::map<int,bool>& mapProcd, KdTree<PointT>* tree, float dTol);
     
     std::vector<typename pcl::PointCloud<PointT>::Ptr> Clustering(typename pcl::PointCloud<PointT>::Ptr cloud, float clusterTolerance, int minSize, int maxSize);
 
