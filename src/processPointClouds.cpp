@@ -29,56 +29,52 @@ typename pcl::PointCloud<PointT>::Ptr ProcessPointClouds<PointT>::FilterCloud (t
   auto startTime = std::chrono::steady_clock::now();
   
   // TODO:: Fill in the function to do voxel grid point reduction and region based filtering
+
+
+  /////////////////////////////////////////////////////////////////////////////////////////////
+  /// VOXEL filter section
+  //    Purpose: Reduction of the original cloud size
+  //
   pcl::VoxelGrid<PointT> sor;
   sor.setInputCloud (cloud);
   sor.setLeafSize (filterRes,filterRes,filterRes);
 
-  // We need a return cloud
-  typename pcl::PointCloud<PointT>::Ptr filteredCloud (new typename pcl::PointCloud<PointT>());
+  // We need a return cloud  -- no 'typename' before new
+  typename pcl::PointCloud<PointT>::Ptr filteredCloud (new pcl::PointCloud<PointT>);
   sor.filter (*filteredCloud);
-  std::cout << " Voxel filtered size = " << filteredCloud->points.size() << std::endl;
 
-  // Now create the ROI region-of-interest
-  typename pcl::PointCloud<PointT>::Ptr filteredCroppedCloud (new pcl::PointCloud<PointT>);
 
-  pcl::CropBox<PointT> cBox (false); // true==we want indices
+  /////////////////////////////////////////////////////////////////////////////////////////////
+  /// CROPPING section
+  //    Purpose: Limit the space of interest. Also reduces cloud size
+  //
+  typename pcl::PointCloud<PointT>::Ptr croppedFilteredCloud (new pcl::PointCloud<PointT>);
+  pcl::CropBox<PointT> cBox (true); // true==we want indices
 
   cBox.setInputCloud (filteredCloud);
   cBox.setMin (minPoint);
   cBox.setMax (maxPoint);
-  
-  cBox.filter (*filteredCroppedCloud);
-  std::cout << " Box filtered size = " << filteredCroppedCloud->points.size() << std::endl;
+  cBox.filter (*croppedFilteredCloud);
+  std::cout << " Box filtered size = " << croppedFilteredCloud->points.size() << std::endl;
 
 
+  /////////////////////////////////////////////////////////////////////////////////////////////
+  /// FURTHER CROPPING section
+  //    Purpose: Eliminate extraneous readings
+  //
   pcl::CropBox<PointT> cBroof (true); // true==we want indices
-  cBroof.setInputCloud (filteredCroppedCloud);
+  cBroof.setInputCloud (croppedFilteredCloud);
 
-  Eigen::Vector4f minRoof (-2,-3,-2,1);
-  Eigen::Vector4f maxRoof(4,3,1,1);
+  Eigen::Vector4f minRoof (-2,-3,-2,1); // -1.5, -1.7, -1.0, 1
+  Eigen::Vector4f maxRoof (4,3,1,1);    // 2.6, 1.7, -0.4, 1
   cBroof.setMin (minRoof);
   cBroof.setMax (maxRoof);
-  //cBroof.setMin (Eigen::Vector4f(-2,-3,-2,1));
-  //cBroof.setMax (Eigen::Vector4f(4,3,1,1));
+
+  // Capture the indices of the rooftop cloud points
   std::vector<int> vIndices;
   cBroof.filter (vIndices);
   std::cout << " We got " << vIndices.size() << std::endl;
   
-  if (true) {
-      // Let's visualize the roof top box
-      Box roi;
-      roi.x_min = -30.0;
-      roi.x_max = 30.0;
-      
-      roi.y_min = -26.0;
-      roi.y_max = 26.0;
-      
-      roi.z_min = -5.0;
-      roi.z_max = 15.0;
-      // We'd need to pass the viewer in
-      // renderBox (viewer,roi,0);
-  }
-
   // Create the indices object
   pcl::PointIndices::Ptr pInds {new pcl::PointIndices};
   for (int i: vIndices) {
@@ -87,23 +83,20 @@ typename pcl::PointCloud<PointT>::Ptr ProcessPointClouds<PointT>::FilterCloud (t
 
   // Get the Extractor object going
   pcl::ExtractIndices<PointT> extractor;
-  extractor.setInputCloud (filteredCroppedCloud);
+  extractor.setInputCloud (croppedFilteredCloud);
   extractor.setIndices (pInds);
   extractor.setNegative(true);
 
-  typename pcl::PointCloud<PointT>::Ptr finalCloud (new pcl::PointCloud<PointT>());
+  // Do not need another cloud; 
+  //typename pcl::PointCloud<PointT>::Ptr finalCloud (new pcl::PointCloud<PointT>());
 
-  extractor.filter (*finalCloud);
-  
+  extractor.filter (*croppedFilteredCloud);
 
   auto endTime = std::chrono::steady_clock::now();
   auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
   std::cout << "filtering took " << elapsedTime.count() << " milliseconds" << std::endl;
   
-  return finalCloud;
-  //return filteredCroppedCloud;
-  //return filteredCloud;
-  
+  return croppedFilteredCloud;
 }
 
 
