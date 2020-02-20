@@ -48,27 +48,50 @@ void cityBlock (pcl::visualization::PCLVisualizer::Ptr& viewer )
   ProcessPointClouds<pcl::PointXYZI>* ptProcessor = new ProcessPointClouds<pcl::PointXYZI>;
   pcl::PointCloud<pcl::PointXYZI>::Ptr inputCloud = ptProcessor->loadPcd ("../src/sensors/data/pcd/data_1/0000000000.pcd");
   //renderPointCloud (viewer,inputCloud,"CityBlock");
-  // This produces a 'red' cloud
-  //renderPointCloud (viewer,inputCloud,"CityBlock", Color(1,0,0));
 
-  Eigen::Vector4f lowEigen (-10.0, -16.0, -5.0, 1.0);
-  Eigen::Vector4f highEigen (10.0, 16.0, 15.0, 1.0);
+  float fwdX  = 30.0;
+  float sideY = 8.0;
+  Eigen::Vector4f lowEigen (-15.0, -0.8*sideY, -2.0, 1.0);
+  Eigen::Vector4f highEigen (fwdX, sideY, 1.0, 1.0);
 
-  Box roi;
-  roi.x_min = -30.0;
-  roi.x_max = 30.0;
-
-  roi.y_min = -26.0;
-  roi.y_max = 26.0;
-
-  roi.z_min = -5.0;
-  roi.z_max = 15.0;
-  renderBox (viewer,roi,0);
+  if (false) {
+      // This was used to visualize the ROI
+      Box roi;
+      roi.x_min = -30.0;
+      roi.x_max = 30.0;
+      
+      roi.y_min = -26.0;
+      roi.y_max = 26.0;
+      
+      roi.z_min = -5.0;
+      roi.z_max = 15.0;
+      renderBox (viewer,roi,0);
+  }
   
-  pcl::PointCloud<pcl::PointXYZI>::Ptr filteredCloud = ptProcessor->FilterCloud (inputCloud, 0.5, lowEigen, highEigen);
+  float resolution = 0.30;
+  pcl::PointCloud<pcl::PointXYZI>::Ptr filteredCloud = ptProcessor->FilterCloud (inputCloud, resolution,
+										 lowEigen, highEigen);
 
-  renderPointCloud (viewer, filteredCloud, "City_Blocked");
+  //renderPointCloud (viewer, filteredCloud, "City_Blocked");
 
+  float distTol = 0.25;
+  int minSize = 10;
+  int maxSize = 200;
+  std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> vClusters = 
+	      ptProcessor->Clustering (filteredCloud, distTol, minSize, maxSize);
+
+  int count = 1;
+  int vI = 0;
+  std::vector<Color> vCols({Color(1,0,0), Color(0,1,0), Color(0,0,1), Color(0.5,0.5,0.5), Color(0.75,0.25,0.5)});
+  for (pcl::PointCloud<pcl::PointXYZI>::Ptr pO : vClusters) {
+      // render the cloud, eachone in a different colour
+      if (false) {
+	  renderPointCloud (viewer, pO , "Cloud_"+std::to_string(vI), Color(1,1,1));
+      } else {
+	  renderPointCloud (viewer, pO , "Cloud_"+std::to_string(vI), vCols[vI % vCols.size()]);
+      }
+      vI++;
+  }
   return;
 }
 

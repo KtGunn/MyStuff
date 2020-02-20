@@ -7,10 +7,11 @@
 
 // Structure to represent node of kd tree
 
+template<typename PointT>
 struct Node {
     
     // Contents of the node, XYZ-coords & ID
-    pcl::PointXYZ point;
+    PointT point;
     int id;
     
     // Pointer to the attached nodes
@@ -18,12 +19,14 @@ struct Node {
     Node* right;
     
     // Node constructor
-    Node (pcl::PointXYZ arr, int setId)
+    Node (PointT arr, int setId)
 	:	point(arr), id(setId), left(NULL), right(NULL) {}
 };
 
+
+template<typename PointT>
 struct KdTree {
-    Node* root;
+    Node<PointT>* root;
     
     KdTree() : root (NULL) {}
     
@@ -31,19 +34,19 @@ struct KdTree {
     //  id: numeric count of point in the cloud (index)
     //  3dpoint: xyz coordinates point
     //
-    void insert (pcl::PointXYZ point3D, int id)
+    void insert (PointT point3D, int id)
     {
 	insertHelper (&root, 0,  point3D, id) ;
 	return;
     }
     
     // This is a recursive function
-    void insertHelper (Node** node, uint depth, pcl::PointXYZ point3D, int id) {
+    void insertHelper (Node<PointT>** node, uint depth, PointT point3D, int id) {
 	
 	if (*node == nullptr) {
 	    
 	    // Create and assign the new node
-	    *node = new Node (point3D, id);
+	    *node = new Node<PointT> (point3D, id);
 	    
 	} else {
 	    
@@ -67,12 +70,12 @@ struct KdTree {
     }
     
     // return a list of point ids in the tree that are within distance of target
-    std::vector<int> search (pcl::PointXYZ target, float distanceTol)
+    std::vector<int> search (PointT target, float distanceTol)
     {
 	std::vector<int> ids;
 	
 	// Initialize
-	Node* ptNode = root;
+	Node<PointT>* ptNode = root;
 	
 	uint depth = 0;
 	uint counter = 0; // counts the number of calls to 'searchHelper'
@@ -82,7 +85,7 @@ struct KdTree {
     }
     
     // This is a recursive function
-    void searchHelper (Node* ptNode, pcl::PointXYZ target, float dTol, uint depth, std::vector<int>& ids, uint& counter)
+    void searchHelper (Node<PointT>* ptNode, PointT target, float dTol, uint depth, std::vector<int>& ids, uint& counter)
     {
 	
 	// For laughs & giggles we count how often the recurse
