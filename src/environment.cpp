@@ -8,6 +8,7 @@
 
 // KD-tree implementation
 #include "kd3Dtree.h"
+#include "pca.h"
 
 
 // using templates for processPointClouds so also include .cpp to help linker
@@ -104,13 +105,13 @@ void cityBlock (pcl::visualization::PCLVisualizer::Ptr& viewer )
   /////////////////////////////////////////////////////////////////////////////////////////////
   /// CLOUD SEGMENTATION
   //
-  int maxIterations = 100;
-  float distanceThreshold = 0.2;
+  int maxIterations = 200;
+  float distanceThreshold = 0.5;
   std::pair<pcl::PointCloud<pcl::PointXYZI>::Ptr, pcl::PointCloud<pcl::PointXYZI>::Ptr> vRoadObs =
       ptProcessor->SegmentPlane ( filteredCloud, maxIterations, distanceThreshold);
 
   if (true) {
-      renderPointCloud (viewer, vRoadObs.first, "First", Color (1,0,0));
+    //renderPointCloud (viewer, vRoadObs.first, "First", Color (1,0,0));
       renderPointCloud (viewer, vRoadObs.second, "Second", Color (0,0,1));
   }
   
@@ -191,9 +192,14 @@ void simpleHighway(pcl::visualization::PCLVisualizer::Ptr& viewer)
 	  renderPointCloud (viewer, pObCloud , vNames[index], vCols[index]);
 	  index++;
 	  
-	  Box bb = myPcProcessor->BoundingBox (pObCloud);
-	  renderBox (viewer, bb, index);
-	  
+	  if (false) {
+	    Box bb = myPcProcessor->BoundingBox (pObCloud);
+	    renderBox (viewer, bb, index);
+	  } else {
+	    BoxQ bbQ = k_PCA (pObCloud);
+	    renderBox (viewer, bbQ, index);
+	  }
+
 	  if (index >= vCols.size() || index >= vNames.size()) {
 	      std::cout << "Ran out of names or colors. Add more...\n";
 	      break;
@@ -237,7 +243,7 @@ int main (int argc, char** argv)
   CameraAngle setAngle = XY;
   initCamera(setAngle, viewer);
 
-  if (true) {
+  if (false) {
     simpleHighway(viewer);
   } else {
     cityBlock (viewer);
