@@ -48,15 +48,19 @@ void cityBlock (pcl::visualization::PCLVisualizer::Ptr& viewer )
   ProcessPointClouds<pcl::PointXYZI>* ptProcessor = new ProcessPointClouds<pcl::PointXYZI>;
   pcl::PointCloud<pcl::PointXYZI>::Ptr inputCloud = ptProcessor->loadPcd ("../src/sensors/data/pcd/data_1/0000000000.pcd");
 
-  pcl::PointCloud<pcl::PointXYZI>::Ptr filteredCloud;
 
-  if (true) {
-    float fwdX  = 30.0;
-    float sideY = 8.0;
-    Eigen::Vector4f lowEigen (-1*fwdX, -0.8*sideY, -2.0, 1.0);
-    Eigen::Vector4f highEigen (fwdX, sideY, 1.0, 1.0);
+  /////////////////////////////////////////////////////////////////////////////////////////////
+  /// CLOUD FILTERING
+  //
+  pcl::PointCloud<pcl::PointXYZI>::Ptr filteredCloud;
+  
+  float fwdX  = 30.0;
+  float sideY = 8.0;
+  Eigen::Vector4f lowEigen (-1*fwdX, -0.8*sideY, -2.0, 1.0);
+  Eigen::Vector4f highEigen (fwdX, sideY, 1.0, 1.0);
+  
     
-    if (false) {
+  if (false) {
       // This was used to visualize the cropping ROI
       Box roi;
       roi.x_min = -30.0;
@@ -68,9 +72,9 @@ void cityBlock (pcl::visualization::PCLVisualizer::Ptr& viewer )
       roi.z_min = -5.0;
       roi.z_max = 15.0;
       renderBox (viewer,roi,0);
-    }
-
-    if (true) {
+  }
+  
+  if (true) {
       // This was used to visualize the roof top cropping ROI
       Box roi;
       roi.x_min = -2;
@@ -82,17 +86,32 @@ void cityBlock (pcl::visualization::PCLVisualizer::Ptr& viewer )
       roi.z_min = -2;
       roi.z_max = 1;
       renderBox (viewer,roi,2, Color (0.124, 0.58, 0.620));
-    }
-    
-    float resolution = 0.15;
-    filteredCloud = ptProcessor->FilterCloud (inputCloud, resolution,
-                                              lowEigen, highEigen);
-    renderPointCloud (viewer, filteredCloud, "City_Blocked");
+  }
+  
+  float resolution = 0.15;
+  filteredCloud = ptProcessor->FilterCloud (inputCloud, resolution,
+					    lowEigen, highEigen);
+  if (false) {
+      // Render the filtered cloud
+      renderPointCloud (viewer, filteredCloud, "FilteredCityBlock");
+      
+  } else if (false) {
+      // Render the full point cloude
+      renderPointCloud (viewer,inputCloud,"CityBlock");
+  }
+  
 
-  } else {
+  /////////////////////////////////////////////////////////////////////////////////////////////
+  /// CLOUD SEGMENTATION
+  //
+  int maxIterations = 100;
+  float distanceThreshold = 0.2;
+  std::pair<pcl::PointCloud<pcl::PointXYZI>::Ptr, pcl::PointCloud<pcl::PointXYZI>::Ptr> vRoadObs =
+      ptProcessor->SegmentPlane ( filteredCloud, maxIterations, distanceThreshold);
 
-    // Render the full point cloude
-    renderPointCloud (viewer,inputCloud,"CityBlock");
+  if (true) {
+      renderPointCloud (viewer, vRoadObs.first, "First", Color (1,0,0));
+      renderPointCloud (viewer, vRoadObs.second, "Second", Color (0,0,1));
   }
   
   if (false) {
@@ -139,41 +158,47 @@ void simpleHighway(pcl::visualization::PCLVisualizer::Ptr& viewer)
   pcl::PointCloud<pcl::PointXYZ>::Ptr inputCloud = lid->scan ();
   
   if (false) {
-    renderRays (viewer, lid->position, inputCloud);
     renderPointCloud (viewer, inputCloud, "InCloud");
+  }
+  if (false) {
+    renderRays (viewer, lid->position, inputCloud);
   }
   
   // 200209: 40iter/0.15 leaves a few points on the road; obs are OK
   //         100iter/0.2 is perfect
+  int maxIter = 200;
+  float threshold = 0.2;
   std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr> segmentCloud = 
-    myPcProcessor->SegmentPlane (inputCloud,40, 0.15);
+    myPcProcessor->SegmentPlane (inputCloud,maxIter, threshold);
 
-  if (false) {
-    renderPointCloud (viewer, segmentCloud.first, "First", Color (1,0,0));
-    renderPointCloud (viewer, segmentCloud.second, "Obies", Color (0,0,1));
+  if (true) {
+      renderPointCloud (viewer, segmentCloud.first, "First", Color (1,0,0));
+      renderPointCloud (viewer, segmentCloud.second, "Obies", Color (0,0,1));
   }
   
-  // Now calling for clustering the obstacles cloud
-  std::vector<typename pcl::PointCloud<pcl::PointXYZ>::Ptr> vObClouds = \
-    myPcProcessor->Clustering (segmentCloud.second, 2.0, 10, 200);
-
-  int index = 0;
-  std::vector<std::string> vNames ({"1st", "2nd", "3rd", "4th", "5th", "Sixth" });
-  std::vector<Color> vCols({Color(1,0,0), Color(0,1,0), Color(0,0,1), Color(0.5,0.5,0.5), Color(0.75,0.25,0.5)});
-
-  for (pcl::PointCloud<pcl::PointXYZ>::Ptr pObCloud : vObClouds) {
-
-    // render the cloud, eachone in a different colour
-    renderPointCloud (viewer, pObCloud , vNames[index], vCols[index]);
-    index++;
-
-    Box bb = myPcProcessor->BoundingBox (pObCloud);
-    renderBox (viewer, bb, index);
-    
-    if (index >= vCols.size() || index >= vNames.size()) {
-      std::cout << "Ran out of names or colors. Add more...\n";
-      break;
-    }
+  if (true) {
+      // Now calling for clustering the obstacles cloud
+      std::vector<typename pcl::PointCloud<pcl::PointXYZ>::Ptr> vObClouds = \
+	  myPcProcessor->Clustering (segmentCloud.second, 2.0, 5, 200);
+      
+      int index = 0;
+      std::vector<std::string> vNames ({"1st", "2nd", "3rd", "4th", "5th", "Sixth" });
+      std::vector<Color> vCols({Color(1,0,0), Color(0,1,0), Color(0,0,1), Color(0.5,0.5,0.5), Color(0.75,0.25,0.5)});
+      
+      for (pcl::PointCloud<pcl::PointXYZ>::Ptr pObCloud : vObClouds) {
+	  
+	  // render the cloud, eachone in a different colour
+	  renderPointCloud (viewer, pObCloud , vNames[index], vCols[index]);
+	  index++;
+	  
+	  Box bb = myPcProcessor->BoundingBox (pObCloud);
+	  renderBox (viewer, bb, index);
+	  
+	  if (index >= vCols.size() || index >= vNames.size()) {
+	      std::cout << "Ran out of names or colors. Add more...\n";
+	      break;
+	  }
+      }
   }
   
   return;
@@ -212,7 +237,7 @@ int main (int argc, char** argv)
   CameraAngle setAngle = XY;
   initCamera(setAngle, viewer);
 
-  if (false) {
+  if (true) {
     simpleHighway(viewer);
   } else {
     cityBlock (viewer);
