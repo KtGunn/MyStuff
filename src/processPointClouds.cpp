@@ -112,7 +112,8 @@ ProcessPointClouds<PointT>::SeparateClouds (pcl::PointIndices::Ptr inliers, type
     road->points.push_back(cloud->points[ind]);
   }
   
-  pcl::ExtractIndices<pcl::PointXYZ> extractor;
+  pcl::ExtractIndices<PointT> extractor;
+  //pcl::ExtractIndices<pcl::PointXYZ> extractor;
   extractor.setInputCloud (cloud);
   extractor.setIndices (inliers);
   extractor.setNegative(true);
@@ -143,7 +144,8 @@ ProcessPointClouds<PointT>::SegmentPlane(typename pcl::PointCloud<PointT>::Ptr c
   if (PCL) {
     //+++++++++++++++++++++++++++++++++++++++++++++++++++++++++
     // PCL ransac
-    pcl::SACSegmentation<pcl::PointXYZ> seg;
+    pcl::SACSegmentation<PointT> seg;
+    //pcl::SACSegmentation<pcl::PointXYZ> seg;
     seg.setOptimizeCoefficients (true);
     seg.setModelType (pcl::SACMODEL_PLANE);
     seg.setMethodType (pcl::SAC_RANSAC);
@@ -155,7 +157,7 @@ ProcessPointClouds<PointT>::SegmentPlane(typename pcl::PointCloud<PointT>::Ptr c
     seg.segment (*inliers, *coefficients);
     
     if (inliers->indices.size() == 0 ) {
-	    std::cout << "Sorry, inliers size is 0\n";
+	std::cout << "Sorry, inliers size is 0\n";
     }
     
   } else {
@@ -164,7 +166,7 @@ ProcessPointClouds<PointT>::SegmentPlane(typename pcl::PointCloud<PointT>::Ptr c
     
     // This copy operation seems very inefficient
     for ( int ptId : inlierPoints ) {
-	    inliers->indices.push_back (ptId);
+	inliers->indices.push_back (ptId);
     }
   }
   
@@ -202,9 +204,12 @@ std::unordered_set<int> ProcessPointClouds<PointT>::ktRansac (typename pcl::Poin
     }
     
     auto it = testSet.begin();
-    pcl::PointXYZ p1 = cloud->points[*it]; it++;
-    pcl::PointXYZ p2 = cloud->points[*it]; it++;
-    pcl::PointXYZ p3 = cloud->points[*it];
+    PointT p1 = cloud->points[*it]; it++;
+    PointT p2 = cloud->points[*it]; it++;
+    PointT p3 = cloud->points[*it];
+    //pcl::PointXYZ p1 = cloud->points[*it]; it++;
+    //pcl::PointXYZ p2 = cloud->points[*it]; it++;
+    //pcl::PointXYZ p3 = cloud->points[*it];
     
     // Unit vector |P2-P1|
     float a = p2.x-p1.x;
@@ -235,7 +240,8 @@ std::unordered_set<int> ProcessPointClouds<PointT>::ktRansac (typename pcl::Poin
     for (short k=0; k<cloud->size(); k++) {
 	
 	// Next could point to test
-	pcl::PointXYZ pt = cloud->points[k];
+	PointT pt = cloud->points[k];
+	//pcl::PointXYZ pt = cloud->points[k];
 	float dist = fabs (A*pt.x + B*pt.y + C*pt.z + D)/denom;
 	
 	// If distance is smaller than threshold count it as inlier
