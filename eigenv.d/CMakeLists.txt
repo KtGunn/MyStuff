@@ -15,5 +15,5 @@ add_definitions(${PCL_DEFINITIONS})
 ### HOW about this!
 list(REMOVE_ITEM PCL_LIBRARIES "vtkproj4")
 
-add_executable (Box box.cpp)
+add_executable (Box main.cpp box.cpp)
 target_link_libraries (Box ${PCL_LIBRARIES})
