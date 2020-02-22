@@ -152,9 +152,19 @@ std::unordered_set<int> Ransac(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int ma
     
 }
 
-int main ()
+int main (int argc, char ** argv)
 {
+    std::cout << " argc = " << argc << std::endl;
+
+    int maxiterations = 30;
+    float threshold = 0.2;
     
+    if (argc == 3) {
+	// iterations && threshold
+	maxiterations = std::stoi(argv[1]);
+	threshold = std::stof(argv[2]);
+    }
+
     // Create viewer
     pcl::visualization::PCLVisualizer::Ptr viewer = initScene();
     
@@ -164,7 +174,7 @@ int main ()
     
     
     // TODO: Change the max iteration and distance tolerance arguments for Ransac function
-    std::unordered_set<int> inliers = Ransac(cloud, 30, 0.2);
+    std::unordered_set<int> inliers = Ransac(cloud, maxiterations, threshold);
     
     pcl::PointCloud<pcl::PointXYZ>::Ptr  cloudInliers(new pcl::PointCloud<pcl::PointXYZ>());
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloudOutliers(new pcl::PointCloud<pcl::PointXYZ>());
