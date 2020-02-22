@@ -184,79 +184,77 @@ ProcessPointClouds<PointT>::SegmentPlane(typename pcl::PointCloud<PointT>::Ptr c
 // My implementation of RANSAC
 //
 template<typename PointT>
-std::unordered_set<int> ProcessPointClouds<PointT>::ktRansac (typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceTol)
+    std::unordered_set<int> ProcessPointClouds<PointT>::ktRansac (typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations, float distanceTol)
 {
-  std::unordered_set<int> inliersResult;
-  srand (time(NULL));
-  
-  // For max iterations 
-  for (short n=0; n<maxIterations; n++) {
+    std::unordered_set<int> inliersResult;
+    srand (time(NULL));
     
-    // Randomly sample subset and fit line
-    std::unordered_set<int> testSet;
-    while (testSet.size() < 3) {
+    // For max iterations 
+    for (short n=0; n<maxIterations; n++) {
+	
+	// Randomly sample subset and fit line
+	std::unordered_set<int> testSet;
+	while (testSet.size() < 3) {
 	    int index = rand() % (cloud->points.size());
 	    if ( testSet.count(index) > 0 ) {
-        continue;
+		continue;
 	    } else {
-        testSet.insert(index);
+		testSet.insert(index);
 	    }
-    }
-    
-    auto it = testSet.begin();
-    PointT p1 = cloud->points[*it]; it++;
-    PointT p2 = cloud->points[*it]; it++;
-    PointT p3 = cloud->points[*it];
-    //pcl::PointXYZ p1 = cloud->points[*it]; it++;
-    //pcl::PointXYZ p2 = cloud->points[*it]; it++;
-    //pcl::PointXYZ p3 = cloud->points[*it];
-    
-    // Unit vector |P2-P1|
-    float a = p2.x-p1.x;
-    float b = p2.y-p1.y;
-    float c = p2.z-p1.z;
-    float denom = sqrt(a*a+b*b+c*c);
-    a /= denom;
-    b /= denom;
-    c /= denom;
-    
-    // Unit vector |P3-P1|
-    float d = p3.x-p1.x;
-    float e = p3.y-p1.y;
-    float f = p3.z-p1.z;
-    denom = sqrt(d*d+e*e+f*f);
-    d /= denom;
-    e /= denom;
-    f /= denom;
-    
-    // Normal vector (uv1 x uv2)
-    float A = b*f-e*c; // i
-    float B = c*d-a*f; // j
-    float C = a*e-b*d; // k
-    float D = A*p1.x + B*p1.y + C*p1.z;
-    denom = sqrt (A*A+B*B+C*C);
-    
-    // Measure distance between every point and fitted line
-    for (short k=0; k<cloud->size(); k++) {
+	}
 	
-	// Next could point to test
-	PointT pt = cloud->points[k];
-	//pcl::PointXYZ pt = cloud->points[k];
-	float dist = fabs (A*pt.x + B*pt.y + C*pt.z + D)/denom;
+	auto it = testSet.begin();
+	PointT p1 = cloud->points[*it]; it++;
+	PointT p2 = cloud->points[*it]; it++;
+	PointT p3 = cloud->points[*it];
 	
-	// If distance is smaller than threshold count it as inlier
-	if ( dist <= distanceTol ) {
-	    testSet.insert(k);
+	// Unit vector |P2-P1|
+	float a = p2.x-p1.x;
+	float b = p2.y-p1.y;
+	float c = p2.z-p1.z;
+	float denom = sqrt(a*a+b*b+c*c);
+	a /= denom;
+	b /= denom;
+	c /= denom;
+	
+	// Unit vector |P3-P1|
+	float d = p3.x-p1.x;
+	float e = p3.y-p1.y;
+	float f = p3.z-p1.z;
+	denom = sqrt(d*d+e*e+f*f);
+	d /= denom;
+	e /= denom;
+	f /= denom;
+	
+	// Normal vector (uv1 x uv2)
+	float A = b*f-e*c; // i
+	float B = c*d-a*f; // j
+	float C = a*e-b*d; // k
+	float D = A*p1.x + B*p1.y + C*p1.z;
+	denom = sqrt (A*A+B*B+C*C);
+	
+	// Measure distance between every point and fitted line
+	for (short k=0; k<cloud->size(); k++) {
+	    
+	    // Next could point to test
+	    PointT pt = cloud->points[k];
+
+	    // 200221: IMPORTANT mod: '+ D' --> '- D'
+	    float dist = fabs (A*pt.x + B*pt.y + C*pt.z - D)/denom;
+	    
+	    // If distance is smaller than threshold count it as inlier
+	    if ( dist <= distanceTol ) {
+		testSet.insert(k);
+	    }
+	}
+	
+	// Return indicies of inliers from fitted line with most inliers
+	if ( inliersResult.size() < testSet.size() ) {
+	    inliersResult = testSet;
 	}
     }
     
-    // Return indicies of inliers from fitted line with most inliers
-    if ( inliersResult.size() < testSet.size() ) {
-	inliersResult = testSet;
-    }
-  }
-  
-  return inliersResult;
+    return inliersResult;
 }
 
 //*** PROXIMITY **********************************************************************************************
@@ -305,7 +303,6 @@ ProcessPointClouds<PointT>::Clustering (typename pcl::PointCloud<PointT>::Ptr cl
   
   // Insert the cloud points into the tree
   for (int i=0; i < cloud->size(); i++) {
-      //pcl::PointXYZ pt = cloud->points[i];
       PointT pt = cloud->points[i];
       tree->insert (pt,i);
   }

@@ -14,6 +14,14 @@
 // using templates for processPointClouds so also include .cpp to help linker
 #include "processPointClouds.cpp"
 
+namespace nspKT {
+    // Using a separate name space for my debugging variables
+    static bool g_doClustering = false;
+    static bool g_doSegmentation = false;
+    static bool g_doPCABoxing = false;
+}
+
+
 std::vector<Car> initHighway(bool renderScene, pcl::visualization::PCLVisualizer::Ptr& viewer)
 {
   
@@ -97,43 +105,63 @@ void cityBlock (pcl::visualization::PCLVisualizer::Ptr& viewer )
       renderPointCloud (viewer, filteredCloud, "FilteredCityBlock");
       
   } else if (false) {
-      // Render the full point cloude
+      // Render the full point cloud
       renderPointCloud (viewer,inputCloud,"CityBlock");
   }
   
 
   /////////////////////////////////////////////////////////////////////////////////////////////
-  /// CLOUD SEGMENTATION
+  /// CLOUD SEGMENTATION -- separate road from obstacles
   //
-  int maxIterations = 200;
-  float distanceThreshold = 0.5;
-  std::pair<pcl::PointCloud<pcl::PointXYZI>::Ptr, pcl::PointCloud<pcl::PointXYZI>::Ptr> vRoadObs =
-      ptProcessor->SegmentPlane ( filteredCloud, maxIterations, distanceThreshold);
+  std::pair<pcl::PointCloud<pcl::PointXYZI>::Ptr, pcl::PointCloud<pcl::PointXYZI>::Ptr> vRoadObs;
+  if ( nspKT::g_doSegmentation ) {
+      int maxIterations = 50;
+      float distanceThreshold = 0.2;
+      vRoadObs = ptProcessor->SegmentPlane ( filteredCloud, maxIterations, distanceThreshold);
+      
+      if (true) {
+	  // Road is light green
+	  renderPointCloud (viewer, vRoadObs.first, "First", Color (0,0.5,0));
 
-  if (true) {
-    //renderPointCloud (viewer, vRoadObs.first, "First", Color (1,0,0));
-      renderPointCloud (viewer, vRoadObs.second, "Second", Color (0,0,1));
+	  if ( !nspKT::g_doClustering) {
+	      // Obstacles are pink
+	      renderPointCloud (viewer, vRoadObs.second, "Second", Color (1,0,1));
+	  }
+      }
   }
   
-  if (false) {
-    float distTol = 0.25;
-    int minSize = 10;
-    int maxSize = 200;
-    std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> vClusters = 
-      ptProcessor->Clustering (filteredCloud, distTol, minSize, maxSize);
-    
-    int count = 1;
-    int vI = 0;
-    std::vector<Color> vCols({Color(1,0,0), Color(0,1,0), Color(0,0,1), Color(0.5,0.5,0.5), Color(0.75,0.25,0.5)});
-    for (pcl::PointCloud<pcl::PointXYZI>::Ptr pO : vClusters) {
-      // render the cloud, eachone in a different colour
-      if (false) {
-        renderPointCloud (viewer, pO , "Cloud_"+std::to_string(vI), Color(1,1,1));
-      } else {
-        renderPointCloud (viewer, pO , "Cloud_"+std::to_string(vI), vCols[vI % vCols.size()]);
+  //////////////////////////////////////////////////////////////////////////////////////////////
+  /// CLUSTERING -- identify individual obstacles
+  //
+  std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> vClusters;
+  if ( nspKT::g_doClustering) {
+      
+      float distTol = 0.8;
+      int minSize = 10;
+      int maxSize = 1500;
+      vClusters = ptProcessor->Clustering ( vRoadObs.second, distTol, minSize, maxSize);
+      
+      // All clusters the same colour (pink) to make them stand out
+      std::vector<Color> vCols({Color(1,0,1)});
+
+      int count = 1;
+      int vI = 0;
+      for (pcl::PointCloud<pcl::PointXYZI>::Ptr pO : vClusters) {
+	  // Render the cloud, each in a different colour (maybe)
+	  renderPointCloud (viewer, pO , "Ob_"+std::to_string(vI), vCols[vI % vCols.size()]);
+	  vI++;
+
+	  //-------------------------------------------------------------------------------
+	  /// BOXING
+	  //
+	  if ( !nspKT::g_doPCABoxing ) {
+	      Box bb = ptProcessor->BoundingBox (pO);
+	      renderBox (viewer, bb, vI+100);
+	  } else {
+	      //BoxQ bbQ = k_PCA (pO);
+	      //renderBox (viewer, bbQ, vI+100);
+	  }
       }
-      vI++;
-    }
   }
 
   return;
@@ -142,72 +170,93 @@ void cityBlock (pcl::visualization::PCLVisualizer::Ptr& viewer )
 
 void simpleHighway(pcl::visualization::PCLVisualizer::Ptr& viewer)
 {
-  // ----------------------------------------------------
-  // -----Open 3D viewer and display simple highway -----
-  // ----------------------------------------------------
-  
-  // RENDER OPTIONS
-  bool renderScene = false; // 'false'==highway & cars not shown
-  std::vector<Car> cars = initHighway(renderScene, viewer);
-  
-  // DONE -- TODO:: Create lidar sensor 
-  Lidar* lid = new Lidar (cars, 0.0);
-  
-  // DONE -- TODO:: Create point processor
-  ProcessPointClouds<pcl::PointXYZ>* myPcProcessor = new ProcessPointClouds<pcl::PointXYZ>;
-  
-  pcl::PointCloud<pcl::PointXYZ>::Ptr inputCloud = lid->scan ();
-  
-  if (false) {
-    renderPointCloud (viewer, inputCloud, "InCloud");
-  }
-  if (false) {
-    renderRays (viewer, lid->position, inputCloud);
-  }
-  
-  // 200209: 40iter/0.15 leaves a few points on the road; obs are OK
-  //         100iter/0.2 is perfect
-  int maxIter = 200;
-  float threshold = 0.2;
-  std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr> segmentCloud = 
-    myPcProcessor->SegmentPlane (inputCloud,maxIter, threshold);
+    // ----------------------------------------------------
+    // -----Open 3D viewer and display simple highway -----
+    // ----------------------------------------------------
+    
+    // RENDER OPTIONS
+    bool renderScene = false; // 'false'==highway & cars not shown
+    std::vector<Car> cars = initHighway(renderScene, viewer);
+    
+    // DONE -- TODO:: Create lidar sensor 
+    Lidar* lid = new Lidar (cars, 0.0);
+    
+    // DONE -- TODO:: Create point processor
+    ProcessPointClouds<pcl::PointXYZ>* myPcProcessor = new ProcessPointClouds<pcl::PointXYZ>;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr inputCloud = lid->scan ();
+    
+    if (false) {
+	renderPointCloud (viewer, inputCloud, "InCloud");
+    }
+    if (false) {
+	renderRays (viewer, lid->position, inputCloud);
+    }
+    
+    // 200209: 40iter/0.15 leaves a few points on the road; obs are OK
+    //         100iter/0.2 is perfect
+    std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr> segmentCloud;
 
-  if (true) {
-      renderPointCloud (viewer, segmentCloud.first, "First", Color (1,0,0));
-      renderPointCloud (viewer, segmentCloud.second, "Obies", Color (0,0,1));
-  }
-  
-  if (true) {
-      // Now calling for clustering the obstacles cloud
-      std::vector<typename pcl::PointCloud<pcl::PointXYZ>::Ptr> vObClouds = \
-	  myPcProcessor->Clustering (segmentCloud.second, 2.0, 5, 200);
-      
-      int index = 0;
-      std::vector<std::string> vNames ({"1st", "2nd", "3rd", "4th", "5th", "Sixth" });
-      std::vector<Color> vCols({Color(1,0,0), Color(0,1,0), Color(0,0,1), Color(0.5,0.5,0.5), Color(0.75,0.25,0.5)});
-      
-      for (pcl::PointCloud<pcl::PointXYZ>::Ptr pObCloud : vObClouds) {
-	  
-	  // render the cloud, eachone in a different colour
-	  renderPointCloud (viewer, pObCloud , vNames[index], vCols[index]);
-	  index++;
-	  
-	  if (false) {
-	    Box bb = myPcProcessor->BoundingBox (pObCloud);
-	    renderBox (viewer, bb, index);
-	  } else {
-	    BoxQ bbQ = k_PCA (pObCloud);
-	    renderBox (viewer, bbQ, index);
-	  }
+    //////////////////////////////////////////////////////////////////////////////////////////////
+    /// SEGMENTATION -- separate road from obstacles
+    //
+    if ( nspKT::g_doSegmentation ) {
+	int maxIter = 200;
+	float threshold = 0.2;
+	// std::pair<pcl::PointCloud<pcl::PointXYZ>::Ptr, pcl::PointCloud<pcl::PointXYZ>::Ptr>
+	segmentCloud = 
+	    myPcProcessor->SegmentPlane (inputCloud,maxIter, threshold);
+	
+	if (true) {
+	    renderPointCloud (viewer, segmentCloud.first, "First", Color (0,1,0));
+	    renderPointCloud (viewer, segmentCloud.second, "Obies", Color (0,0,1));
+	}
+    }
 
-	  if (index >= vCols.size() || index >= vNames.size()) {
-	      std::cout << "Ran out of names or colors. Add more...\n";
-	      break;
-	  }
-      }
-  }
-  
-  return;
+    
+    //////////////////////////////////////////////////////////////////////////////////////////////
+    /// CLUSTERING -- identify individual obstacles
+    //
+    std::vector<typename pcl::PointCloud<pcl::PointXYZ>::Ptr> vObClouds;
+    if ( nspKT::g_doClustering) {
+	
+	float distTol = 0.25;
+	int minSize = 10;
+	int maxSize = 200;
+	
+	// Clustering the obstacles cloud
+	vObClouds = myPcProcessor->Clustering (segmentCloud.second, distTol, minSize, maxSize);
+	
+	int index = 0;
+	std::vector<std::string> vNames ({"1st", "2nd", "3rd", "4th", "5th", "Sixth" });
+	std::vector<Color> vCols ({Color (1,0,0), Color (0,1,0), Color (0,0,1), Color (0.5,0.5,0.5),
+			Color (0.75,0.25,0.5)});
+	
+	for (pcl::PointCloud<pcl::PointXYZ>::Ptr pObCloud : vObClouds) {
+	    
+	    // render the cloud, eachone in a different colour
+	    renderPointCloud (viewer, pObCloud , vNames[index], vCols[index]);
+	    index++;
+	    
+	    
+	    //-------------------------------------------------------------------------------
+	    /// BOXING
+	    //
+	    if ( !nspKT::g_doPCABoxing ) {
+		Box bb = myPcProcessor->BoundingBox (pObCloud);
+		renderBox (viewer, bb, index);
+	    } else {
+		BoxQ bbQ = k_PCA (pObCloud);
+		renderBox (viewer, bbQ, index);
+	    }
+	    
+	    if (index >= vCols.size() || index >= vNames.size()) {
+		std::cout << "Ran out of names or colors. Add more...\n";
+		break;
+	    }
+	}
+    }
+    
+    return;
 }
 
 
@@ -237,20 +286,47 @@ void initCamera(CameraAngle setAngle, pcl::visualization::PCLVisualizer::Ptr& vi
 
 int main (int argc, char** argv)
 {
-  std::cout << "starting enviroment" << std::endl;
-  
-  pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-  CameraAngle setAngle = XY;
-  initCamera(setAngle, viewer);
+    std::cerr << "usage: ./environment [doseg] [docluster] [doCPA]" << std::endl;
+    std::cout << "starting enviroment" << std::endl;
+    
+    nspKT::g_doSegmentation = false;
+    nspKT::g_doClustering = false;
+    nspKT::g_doPCABoxing = false;
+    
+    switch (argc)
+	{
+	case 2:
+	    {
+		nspKT::g_doSegmentation = std::stoi(argv[1]);
+	    }
+	    break;
+	case 3:
+	    {
+		nspKT::g_doSegmentation = std::stoi(argv[1]);
+		nspKT::g_doClustering = std::stoi(argv[2]);
+	    }
+	    break;
+	case 4:
+	    {
+		nspKT::g_doSegmentation = std::stoi(argv[1]);
+		nspKT::g_doClustering = std::stoi(argv[2]);
+		nspKT::g_doPCABoxing = std::stoi(argv[3]);
+	    }
+	    break;
+	}
 
-  if (false) {
-    simpleHighway(viewer);
-  } else {
-    cityBlock (viewer);
-  }
-  
-  while (!viewer->wasStopped ())
-    {
-      viewer->spinOnce ();
+    pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+    CameraAngle setAngle = XY;
+    initCamera(setAngle, viewer);
+    
+    bool doCity = true;
+    if ( !doCity ) {
+	simpleHighway(viewer);
+    } else {
+	cityBlock (viewer);
+    }
+    
+    while (!viewer->wasStopped ()) {
+	viewer->spinOnce ();
     } 
 }
