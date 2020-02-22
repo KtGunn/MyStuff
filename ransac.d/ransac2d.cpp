@@ -60,7 +60,6 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr CreateData3D()
 {
     ProcessPointClouds<pcl::PointXYZ> pointProcessor;
     return pointProcessor.loadPcd ( sthighwayFile );
-    //return pointProcessor.loadPcd("../../../sensors/data/pcd/simpleHighway.pcd");
 }
 
 
@@ -134,7 +133,10 @@ std::unordered_set<int> Ransac(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int ma
 	    
 	    // Next could point to test
 	    pcl::PointXYZ pt = cloud->points[k];
-	    float dist = fabs (A*pt.x + B*pt.y + C*pt.z + D)/denom;
+
+	    // 200221: IMPORTANT mod: '+ D' --> '- D'
+	    float dist = fabs (A*pt.x + B*pt.y + C*pt.z - D)/denom;
+	    //float dist = fabs (A*pt.x + B*pt.y + C*pt.z + D)/denom;
 	    
 	    // If distance is smaller than threshold count it as inlier
 	    if ( dist <= distanceTol ) {
@@ -154,7 +156,7 @@ std::unordered_set<int> Ransac(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud, int ma
 
 int main (int argc, char ** argv)
 {
-    std::cout << " argc = " << argc << std::endl;
+    std::cerr << "usage: ./quizRansac [maxiter(int)] [threshold(float)]" << std::endl;
 
     int maxiterations = 30;
     float threshold = 0.2;
@@ -164,6 +166,7 @@ int main (int argc, char ** argv)
 	maxiterations = std::stoi(argv[1]);
 	threshold = std::stof(argv[2]);
     }
+    std::cerr << "maxiterations = " << maxiterations << " threshold = " << threshold << std::endl;
 
     // Create viewer
     pcl::visualization::PCLVisualizer::Ptr viewer = initScene();
