@@ -16,134 +16,182 @@
 //  in the order rZ,rY,rX
 //
 Eigen::Affine3f k_Compose (float (&t)[3], float (&r)[3]) {
-  
-  Eigen::Affine3f xF = Eigen::Affine3f::Identity();
-  xF.translation() << t[0], t[1], t[2];
+    
+    Eigen::Affine3f xF = Eigen::Affine3f::Identity();
+    xF.translation() << t[0], t[1], t[2];
+    
+    Eigen::Matrix3f rot;
+    rot = Eigen::AngleAxisf (r[0], Eigen::Vector3f::UnitZ ()) *
+	Eigen::AngleAxisf (r[1], Eigen::Vector3f::UnitY ()) *
+	Eigen::AngleAxisf (r[2], Eigen::Vector3f::UnitX ());
+    
+    xF.rotate (rot);
+    return xF;
+}
 
-  Eigen::Matrix3f rot;
-  rot = Eigen::AngleAxisf (r[0], Eigen::Vector3f::UnitZ ()) *
-    Eigen::AngleAxisf (r[1], Eigen::Vector3f::UnitY ()) *
-    Eigen::AngleAxisf (r[2], Eigen::Vector3f::UnitX ());
-
-  xF.rotate (rot);
-  return xF;
+//*****************************************************************************
+// COMPOSE
+//  Create a transformation given vector of translation and quaternion
+//
+Eigen::Affine3f k_Compose (float (&t)[3], Eigen::Quaternionf quat) {
+    
+    Eigen::Affine3f xF = Eigen::Affine3f::Identity ();
+    xF.translation() << t[0], t[1], t[2];
+    
+    Eigen::Matrix3f rot = quat.toRotationMatrix ();
+    xF.rotate (rot);
+    return xF;
 }
 
 
 //*****************************************************************************
-// BOUNDINGBOX -- created w.r.t. world frame
+// MINMAXPTS  -- Minimum and Maximum 3D points of a cloud
 //
-std::vector<pcl::PointXYZ> k_BoundingBox (pcl::PointCloud<pcl::PointXYZ>::Ptr& cluster)
+template<typename PointT>
+    std::vector<PointT> k_MinMaxPts (typename pcl::PointCloud<PointT>::Ptr& cluster)
 {
-  // Find bounding box for one of the clusters
-  pcl::PointXYZ minPoint, maxPoint;
-  pcl::getMinMax3D (*cluster, minPoint, maxPoint);
-  return std::vector<pcl::PointXYZ>({minPoint, maxPoint});
+    // Find bounding box for one of the clusters
+    PointT minPoint, maxPoint;
+    pcl::getMinMax3D (*cluster, minPoint, maxPoint);
+    return std::vector<PointT>({minPoint, maxPoint});
 }
 
+
+//*****************************************************************************
+// QBoxDimensions  -- Fill in the dimensions of a bounding box
+//
+template<typename PointT>
+    void k_QBoxDimensions (BoxQ& qBox, std::vector<PointT> vPs)
+{
+    // Fill in a BoxQ object
+    qBox.cube_length = vPs[1].x - vPs[0].x;
+    qBox.cube_width  = vPs[1].y - vPs[0].y;
+    qBox.cube_height = vPs[1].z - vPs[0].z;
+    return;
+}
+
+//BoxQ k_SimpleBoxQ (typename pcl::PointCloud<PointT>::Ptr& cluster)
+template<typename PointT>
+    BoxQ k_SimpleBoxQ (typename pcl::PointCloud<PointT>::Ptr cluster)
+{
+    // Compute a standard world space bounding box
+    std::vector<pcl::PointXYZ> vPs = k_MinMaxPts (cluster);
+    
+    // Fill in a BoxQ object
+    BoxQ qBox;
+    k_QBoxDimensions (qBox, vPs);
+    
+    // Compute the cloud's centroid
+    Eigen::Vector4f vctroid;
+    pcl::compute3DCentroid ( *cluster, vctroid);
+    
+    // Set the box's frame
+    qBox.bboxQuaternion = Eigen::Quaternionf::Identity ();
+    qBox.bboxTransform = Eigen::Vector3f ({vctroid[0], vctroid[1], vctroid[2]});
+    
+    return (qBox);
+}
 
 
 //*****************************************************************************
 // CLOUD TRANSFORMATION
 //
-pcl::PointCloud<pcl::PointXYZ>::Ptr
-k_transformCLoud (pcl::PointCloud<pcl::PointXYZ>::Ptr& srcCloud, Eigen::Affine3f& xf) {
-  
-  pcl::PointCloud<pcl::PointXYZ>::Ptr dstCloud (new pcl::PointCloud<pcl::PointXYZ>());
-  pcl::transformPointCloud (*srcCloud, *dstCloud, xf);
-  return dstCloud;
+template<typename PointT>
+    typename pcl::PointCloud<PointT>::Ptr
+    k_transformCloud (typename pcl::PointCloud<PointT>::Ptr& srcCloud, Eigen::Affine3f& xf)
+{
+    typename pcl::PointCloud<PointT>::Ptr dstCloud (new typename pcl::PointCloud<PointT>());
+    pcl::transformPointCloud (*srcCloud, *dstCloud, xf);
+    return dstCloud;
 }
-
 
 
 //*****************************************************************************
 // PCA
 //
-//std::vector<pcl::PointXYZ> PCA (pcl::PointCloud<pcl::PointXYZ>::Ptr pCloud)
-const BoxQ k_PCA (pcl::PointCloud<pcl::PointXYZ>::Ptr pCloud)
+template<typename PointT>
+    BoxQ k_PCA (typename pcl::PointCloud<PointT>::Ptr pCloud)
 {
+    
+    ///////////////////////////////////////////////////////////////////////////
+    /// CHECK CLOUD SIZE
+    //
+    if (pCloud->size() < 6) {
+	// Cloud is too small to do a PCA analysis; go with standard box
+	return k_SimpleBoxQ (pCloud);
+    }
 
-  ///////////////////////////////////////////////////////////////////////////
-  /// CENTROID & EIGEN Analysis
-  //
-  // Start PCA analysis
-  pcl::PCA<pcl::PointXYZ> pca;
 
-  // Set the input cloud
-  pca.setInputCloud (pCloud);
-
-  // Create the cloud in eigen space
-  pcl::PointCloud<pcl::PointXYZ>::Ptr pPCAcloud (new pcl::PointCloud<pcl::PointXYZ>());
-  pca.project (*pCloud, *pPCAcloud);
-
-  // Get eigen vectors & values
-  Eigen::Matrix3f eigenM = pca.getEigenVectors ();
-  Eigen::Vector3f eigenVs = pca.getEigenValues ();
-
-  // Get the centroid
-  Eigen::Vector4f Ctroid = pca.getMean();
-
-  if (false) {
-    std::cout << " Centroid = " << Ctroid[0] << " " << Ctroid[1] << " " << Ctroid[2]  << std::endl;
-    std::cout << " 1st eigenV = " << eigenM.col(0)[0] << " " <<eigenM.col(0)[1] << " " <<eigenM.col(0)[2] << std::endl;
-    std::cout << " 1st eigenVal = " << eigenVs[0] << std::endl;
-  }
-  
-  // Eigen analysis check
-  if ( fabs(eigenVs[0]) < fabs(eigenVs[1]) && fabs(eigenVs[0]) < fabs(eigenVs[2]) ) {
-    // 1st eigen value is NOT dominant as we expected
-    std::cout << " PCA analysis failed; returning normal bounding box\n";
+    ///////////////////////////////////////////////////////////////////////////
+    /// CENTROID & EIGEN Analysis
+    //
+    // Start PCA analysis
+    pcl::PCA<PointT> pca;
+    
+    // Set the input cloud
+    pca.setInputCloud (pCloud);
+    
+    // Create the cloud in eigen space
+    typename pcl::PointCloud<PointT>::Ptr pPCAcloud (new pcl::PointCloud<PointT>());
+    pca.project (*pCloud, *pPCAcloud);
+    
+    // Get eigen vectors & values
+    Eigen::Matrix3f eigenM = pca.getEigenVectors ();
+    Eigen::Vector3f eigenVs = pca.getEigenValues ();
+    
+    // Get the centroid
+    Eigen::Vector4f Ctroid = pca.getMean();
     
     if (true) {
-      // Compute a standard world space bounding box
-      std::vector<pcl::PointXYZ> vPs = k_BoundingBox (pCloud);
-      // Compute the cloud's centroid
-      Eigen::Vector4f vctroid;
-      pcl::compute3DCentroid ( *pCloud, vctroid);
-      // Fill in a BoxQ object
-      BoxQ qBox;
-      qBox.cube_length = vPs[1].x - vPs[0].x;
-      qBox.cube_width  = vPs[1].y - vPs[0].y;
-      qBox.cube_height = vPs[1].z - vPs[0].z;
-      qBox.bboxTransform = Eigen::Vector3f (vctroid[0], vctroid[1], vctroid[2]);
-      return (qBox);
+	std::cout << " Centroid = " << Ctroid[0] << " " << Ctroid[1] << " " << Ctroid[2]  << std::endl;
+	std::cout << " 1st eigenV = " << eigenM.col(0)[0] << " " <<eigenM.col(0)[1] << " " <<eigenM.col(0)[2] << std::endl;
+	std::cout << " 1st eigenVal = " << eigenVs[0] << std::endl;
     }
-  }
-  
-  
-   ///////////////////////////////////////////////////////////////////////////
-   /// BOUNDING BOX in PCA cloud
-   //
-   std::vector<pcl::PointXYZ> vB = k_BoundingBox (pPCAcloud);
-   for (pcl::PointXYZ pclPt : vB) {
-     std::cout << "   dbg Eigen Bound " << pclPt << std::endl;
-   }
-   float cube_length  = vB[1].x - vB[0].x;
-   float cube_width =   vB[1].y - vB[0].y;
-   float cube_height  = vB[1].z - vB[0].z;
-   std::cout << "xW=" << cube_length << " yH=" << cube_width << " zD=" << cube_height <<
-     " pts " << pPCAcloud->size() << std::endl;
-   
-   
-   ///////////////////////////////////////////////////////////////////////////
-   /// TRANFORMATION -- centroid & dominant direction
-   //
-   // Set the translation
-   Eigen::Vector3f Trn (Ctroid[0],Ctroid[1],Ctroid[2]);
-   // Set the rotation (z-axis only of interest)
-   Eigen::Vector3f xRotated (eigenM.col(0)[0], eigenM.col(0)[1], 0);
-   Eigen::Vector3f xAxis (1.0, 0.0, 0.0);
-   Eigen::Quaternionf quat = Eigen::Quaternionf::FromTwoVectors (xAxis, xRotated);
-  
-   BoxQ qB;
-   qB.bboxQuaternion = quat;
-   qB.bboxTransform = Trn;
-   qB.cube_length = cube_length;
-   qB.cube_width = cube_width;
-   qB.cube_height = cube_height;
-  
-   return (qB);
- }
+    
 
+    ///////////////////////////////////////////////////////////////////////////
+    /// EIGEN CHECK
+    //
+    Eigen::Vector3f xvEigen (eigenM.col(0)[0], eigenM.col(0)[1], eigenM.col(0)[2]);
+    float zComp =  fabs (xvEigen.dot (Eigen::Vector3f(0,0,1)));
+    std::cout << "   zC = " << zComp << std::endl;
+    if ( zComp > 0.5) {
+	// Primary component is upward; don't want that
+	std::cout << " PCA analysis : EigenV z-dominant (" << zComp << "): simple box created\n";
+	return k_SimpleBoxQ (pCloud);
+    }
+    
+    ///////////////////////////////////////////////////////////////////////////
+    /// CENTROID & EIGEN Analysis
+    //
+    // Translation is the centroid
+    float tr[3] = {Ctroid[0], Ctroid[1], Ctroid[2]};
+    
+    // Rotation about z-axis only
+    Eigen::Vector3f xRotated (eigenM.col(0)[0], eigenM.col(0)[1], 0);
+    Eigen::Vector3f xAxis (1.0, 0.0, 0.0);
+    Eigen::Quaternionf quat = Eigen::Quaternionf::FromTwoVectors (xAxis, xRotated);
+    
+    Eigen::Affine3f  xF = k_Compose (tr, quat);
+    Eigen::Affine3f  xFinv = xF.inverse ();
+    
 
+    ///////////////////////////////////////////////////////////////////////////
+    /// BOUNDING BOX in transformed cloud
+    //
+    // Create a transformed cloud
+    typename pcl::PointCloud<PointT>::Ptr pCxF = k_transformCloud (pCloud, xFinv);
+    // Get the bounds
+    std::vector<PointT>  vPts = k_MinMaxPts (pCxF);
+    // Create BoxQ and fill in the dimensions;
+    BoxQ qB;
+    k_QBoxDimensions (qB, vPts);
+    // Set the transformation
+    qB.bboxQuaternion = quat;
+    qB.bboxTransform = Eigen::Vector3f ({Ctroid[0], Ctroid[1], Ctroid[2]});
 
+    return (qB);
+}
+
+/*
+*/
