@@ -12,12 +12,14 @@
 
 #pragma once
 
+// OK
 Eigen::Affine3f k_Compose (float (&t)[3], float (&r)[3]);
+template<typename PointT> BoxQ k_SimpleBoxQ (typename pcl::PointCloud<PointT>::Ptr cluster);
+//template<typename PointT> BoxQ k_SimpleBoxQ (typename pcl::PointCloud<PointT>::Ptr& cluster);
+template<typename PointT> BoxQ k_PCA (typename pcl::PointCloud<PointT>::Ptr pCloud);
+template<typename PointT> typename pcl::PointCloud<PointT>::Ptr
+    k_transformCloud (typename pcl::PointCloud<PointT>::Ptr& srcCloud, Eigen::Affine3f& xf);
 
-std::vector<pcl::PointXYZ> k_BoundingBox (pcl::PointCloud<pcl::PointXYZ>::Ptr& cluster);
-
-pcl::PointCloud<pcl::PointXYZ>::Ptr
-k_transformCLoud (pcl::PointCloud<pcl::PointXYZ>::Ptr& srcCloud, Eigen::Affine3f& xf);
-
-const BoxQ k_PCA (pcl::PointCloud<pcl::PointXYZ>::Ptr pCloud);
+template<typename PointT> std::vector<PointT> k_MinMaxPts (typename pcl::PointCloud<PointT>::Ptr& cluster);
+template<typename PointT> void k_QBoxDimensions (BoxQ& qBox, std::vector<PointT> vPs);
 
