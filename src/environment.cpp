@@ -97,6 +97,9 @@ void cityBlock (pcl::visualization::PCLVisualizer::Ptr& viewer )
       renderBox (viewer,roi,2, Color (0.124, 0.58, 0.620));
   }
   
+  /////////////////////////////////////////////////////////////////////////////////////////////
+  /// CLOUD FILTERING  -- size reduction
+  //
   float resolution = 0.15;
   filteredCloud = ptProcessor->FilterCloud (inputCloud, resolution,
 					    lowEigen, highEigen);
@@ -158,8 +161,8 @@ void cityBlock (pcl::visualization::PCLVisualizer::Ptr& viewer )
 	      Box bb = ptProcessor->BoundingBox (pO);
 	      renderBox (viewer, bb, vI+100);
 	  } else {
-	      //BoxQ bbQ = k_PCA (pO);
-	      //renderBox (viewer, bbQ, vI+100);
+	      BoxQ bbQ = k_PCA<pcl::PointXYZI> (pO);
+	      renderBox (viewer, bbQ, vI+100);
 	  }
       }
   }
@@ -245,7 +248,7 @@ void simpleHighway(pcl::visualization::PCLVisualizer::Ptr& viewer)
 		Box bb = myPcProcessor->BoundingBox (pObCloud);
 		renderBox (viewer, bb, index);
 	    } else {
-		BoxQ bbQ = k_PCA (pObCloud);
+		BoxQ bbQ = k_PCA<pcl::PointXYZ> (pObCloud);
 		renderBox (viewer, bbQ, index);
 	    }
 	    
@@ -321,8 +324,10 @@ int main (int argc, char** argv)
     
     bool doCity = true;
     if ( !doCity ) {
+	std::cout << " SIMPLE HIGHWAY \n";
 	simpleHighway(viewer);
     } else {
+	std::cout << " CITY BLOCK \n";
 	cityBlock (viewer);
     }
     

@@ -23,3 +23,6 @@ template<typename PointT> typename pcl::PointCloud<PointT>::Ptr
 template<typename PointT> std::vector<PointT> k_MinMaxPts (typename pcl::PointCloud<PointT>::Ptr& cluster);
 template<typename PointT> void k_QBoxDimensions (BoxQ& qBox, std::vector<PointT> vPs);
 
+
+// Include the implementation
+#include "pca.tpp"
