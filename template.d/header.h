@@ -8,16 +8,3 @@
 #include <pcl/common/pca.h>
 
 #pragma once
-
-template<typename PointT>
-    void DoNothing (typename pcl::PointCloud<PointT>::Ptr cloud);
-
-
-/*
-template<typename PointT>
-    void DoNothing (typename pcl::PointCloud<PointT>::Ptr cloud)
-{
-    return;
-}
-*/
-
