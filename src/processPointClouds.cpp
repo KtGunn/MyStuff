@@ -55,7 +55,7 @@ typename pcl::PointCloud<PointT>::Ptr ProcessPointClouds<PointT>::FilterCloud (t
   cBox.setMin (minPoint);
   cBox.setMax (maxPoint);
   cBox.filter (*croppedFilteredCloud);
-  std::cout << " Box filtered size = " << croppedFilteredCloud->points.size() << std::endl;
+  // std::cout << " Box filtered size = " << croppedFilteredCloud->points.size() << std::endl;
 
 
   /////////////////////////////////////////////////////////////////////////////////////////////
@@ -73,7 +73,7 @@ typename pcl::PointCloud<PointT>::Ptr ProcessPointClouds<PointT>::FilterCloud (t
   // Capture the indices of the rooftop cloud points
   std::vector<int> vIndices;
   cBroof.filter (vIndices);
-  std::cout << " We got " << vIndices.size() << std::endl;
+  // std::cout << " We got " << vIndices.size() << std::endl;
   
   // Create the indices object
   pcl::PointIndices::Ptr pInds {new pcl::PointIndices};
@@ -328,7 +328,7 @@ ProcessPointClouds<PointT>::Clustering (typename pcl::PointCloud<PointT>::Ptr cl
 	    Proximity (n, cloud, idsCluster, mapProcessed, tree, dTol);
 	    
 	    // Add the cluster to the list
-	    std::cout << " Cluster size = " << idsCluster.size() << std::endl;
+	    // std::cout << " Cluster size = " << idsCluster.size() << std::endl;
 	    
 	    if (idsCluster.size() >= minSize && idsCluster.size() <= maxSize) {
 		// NOT yet compiled
