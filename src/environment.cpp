@@ -48,14 +48,17 @@ std::vector<Car> initHighway(bool renderScene, pcl::visualization::PCLVisualizer
   return cars;
 }
 
-void cityBlock (pcl::visualization::PCLVisualizer::Ptr& viewer )
+void cityBlockProcessing (pcl::visualization::PCLVisualizer::Ptr& viewer,
+			  ProcessPointClouds<pcl::PointXYZI>* ptProcessor,
+			  pcl::PointCloud<pcl::PointXYZI>::Ptr& inputCloud)
 {
   // ----------------------------------------------------
   // -----Open 3D viewer and display city block     -----
   // ----------------------------------------------------
 
-  ProcessPointClouds<pcl::PointXYZI>* ptProcessor = new ProcessPointClouds<pcl::PointXYZI>;
-  pcl::PointCloud<pcl::PointXYZI>::Ptr inputCloud = ptProcessor->loadPcd ("../src/sensors/data/pcd/data_1/0000000000.pcd");
+  // Original design
+  //ProcessPointClouds<pcl::PointXYZI>* ptProcessor = new ProcessPointClouds<pcl::PointXYZI>;
+  //pcl::PointCloud<pcl::PointXYZI>::Ptr inputCloud = ptProcessor->loadPcd ("../src/sensors/data/pcd/data_1/0000000000.pcd");
 
 
   /////////////////////////////////////////////////////////////////////////////////////////////
@@ -287,6 +290,52 @@ void initCamera(CameraAngle setAngle, pcl::visualization::PCLVisualizer::Ptr& vi
 }
 
 
+
+void cityBlockStreaming (pcl::visualization::PCLVisualizer::Ptr& viewer ) {
+
+    // Create a cloud processor
+    ProcessPointClouds<pcl::PointXYZI>* ptProcessorI = new ProcessPointClouds<pcl::PointXYZI>;
+
+    // Create the data streaming object
+    std::vector<boost::filesystem::path> stream = ptProcessorI->streamPcd ("../src/sensors/data/pcd/data_1");
+
+    // Cloud object to hold incoming data.
+    pcl::PointCloud<pcl::PointXYZI>::Ptr inputCloudI;
+
+    // Initialize the iterator of the file stream
+    auto streamIterator = stream.begin ();
+
+    while ( !viewer->wasStopped() ) {
+
+	// Clear out the display
+	viewer->removeAllPointClouds ();
+	viewer->removeAllShapes ();
+	
+	// Read in the next cloud
+	inputCloudI = ptProcessorI->loadPcd ((*streamIterator).string());
+	cityBlockProcessing (viewer, ptProcessorI, inputCloudI);
+
+	// Move to next file, or back to beginning
+	streamIterator++;
+	if (streamIterator == stream.end())
+	    streamIterator = stream.begin ();
+
+	viewer->spinOnce();
+    }
+
+    return;
+}
+
+/*
+*/
+
+void cityBlockStatic (pcl::visualization::PCLVisualizer::Ptr& viewer) {
+    ProcessPointClouds<pcl::PointXYZI>* ptProcessor = new ProcessPointClouds<pcl::PointXYZI>;
+    pcl::PointCloud<pcl::PointXYZI>::Ptr inputCloud = ptProcessor->loadPcd ("../src/sensors/data/pcd/data_1/0000000000.pcd");
+    cityBlockProcessing (viewer, ptProcessor, inputCloud);
+    return;
+}
+
 int main (int argc, char** argv)
 {
     std::cerr << "usage: ./environment [doseg] [docluster] [doCPA]" << std::endl;
@@ -328,7 +377,13 @@ int main (int argc, char** argv)
 	simpleHighway(viewer);
     } else {
 	std::cout << " CITY BLOCK \n";
-	cityBlock (viewer);
+	bool doStream = true;
+	if (doStream)
+	    cityBlockStreaming (viewer);
+	else
+	    cityBlockStatic (viewer);
+	
+	//cityBlock (viewer);
     }
     
     while (!viewer->wasStopped ()) {
