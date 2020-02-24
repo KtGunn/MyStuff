@@ -157,7 +157,7 @@ ProcessPointClouds<PointT>::SegmentPlane(typename pcl::PointCloud<PointT>::Ptr c
     seg.segment (*inliers, *coefficients);
     
     if (inliers->indices.size() == 0 ) {
-	std::cout << "Sorry, inliers size is 0\n";
+      std::cout << "Sorry, inliers size is 0\n";
     }
     
   } else {
@@ -166,7 +166,7 @@ ProcessPointClouds<PointT>::SegmentPlane(typename pcl::PointCloud<PointT>::Ptr c
     
     // This copy operation seems very inefficient
     for ( int ptId : inlierPoints ) {
-	inliers->indices.push_back (ptId);
+      inliers->indices.push_back (ptId);
     }
   }
   
@@ -303,8 +303,8 @@ ProcessPointClouds<PointT>::Clustering (typename pcl::PointCloud<PointT>::Ptr cl
   
   // Insert the cloud points into the tree
   for (int i=0; i < cloud->size(); i++) {
-      PointT pt = cloud->points[i];
-      tree->insert (pt,i);
+    PointT pt = cloud->points[i];
+    tree->insert (pt,i);
   }
   
   
@@ -331,12 +331,12 @@ ProcessPointClouds<PointT>::Clustering (typename pcl::PointCloud<PointT>::Ptr cl
 	    // std::cout << " Cluster size = " << idsCluster.size() << std::endl;
 	    
 	    if (idsCluster.size() >= minSize && idsCluster.size() <= maxSize) {
-		// NOT yet compiled
-		typename pcl::PointCloud<PointT>::Ptr newCluster (new pcl::PointCloud<PointT>);
-		for (int id : idsCluster) {
-		    newCluster->points.push_back (cloud->points[id]);
-		}
-		clusters.push_back ( newCluster );
+        // NOT yet compiled
+        typename pcl::PointCloud<PointT>::Ptr newCluster (new pcl::PointCloud<PointT>);
+        for (int id : idsCluster) {
+          newCluster->points.push_back (cloud->points[id]);
+        }
+        clusters.push_back ( newCluster );
 	    }
     }
   }
@@ -344,7 +344,7 @@ ProcessPointClouds<PointT>::Clustering (typename pcl::PointCloud<PointT>::Ptr cl
   auto endTime = std::chrono::steady_clock::now();
   auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
   std::cout << "clustering took " << elapsedTime.count() << " milliseconds and found " <<
-      clusters.size() << " clusters" << std::endl;
+    clusters.size() << " clusters" << std::endl;
   
   return clusters;
 }
