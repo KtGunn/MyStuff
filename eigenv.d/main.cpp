@@ -69,7 +69,7 @@ void TestStuff () {
     float tr[3] = {1.0, 0.5, -0.2};
     float ro[3] = {0.0, 0.0, 0.0};
 
-    if (false) {
+    if (true) {
 	ro[0] = -1*PI/4;
     } else {
 	ro[0] = PI/8;
