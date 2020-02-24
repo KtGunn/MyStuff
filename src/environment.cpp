@@ -49,18 +49,18 @@ std::vector<Car> initHighway(bool renderScene, pcl::visualization::PCLVisualizer
 }
 
 void cityBlockProcessing (pcl::visualization::PCLVisualizer::Ptr& viewer,
-			  ProcessPointClouds<pcl::PointXYZI>* ptProcessor,
-			  pcl::PointCloud<pcl::PointXYZI>::Ptr& inputCloud)
+                          ProcessPointClouds<pcl::PointXYZI>* ptProcessor,
+                          pcl::PointCloud<pcl::PointXYZI>::Ptr& inputCloud)
 {
   // ----------------------------------------------------
   // -----Open 3D viewer and display city block     -----
   // ----------------------------------------------------
-
+  
   // Original design
   //ProcessPointClouds<pcl::PointXYZI>* ptProcessor = new ProcessPointClouds<pcl::PointXYZI>;
   //pcl::PointCloud<pcl::PointXYZI>::Ptr inputCloud = ptProcessor->loadPcd ("../src/sensors/data/pcd/data_1/0000000000.pcd");
-
-
+  
+  
   /////////////////////////////////////////////////////////////////////////////////////////////
   /// CLOUD FILTERING
   //
@@ -69,35 +69,35 @@ void cityBlockProcessing (pcl::visualization::PCLVisualizer::Ptr& viewer,
   float fwdX  = 30.0;
   float sideY = 8.0;
   Eigen::Vector4f lowEigen (-1*fwdX, -0.8*sideY, -2.0, 1.0);
-  Eigen::Vector4f highEigen (fwdX, sideY, 1.0, 1.0);
+  Eigen::Vector4f highEigen (fwdX, 0.9*sideY, 1.0, 1.0);
   
-    
+  
   if (false) {
-      // This was used to visualize the cropping ROI
-      Box roi;
-      roi.x_min = -30.0;
-      roi.x_max = 30.0;
-      
-      roi.y_min = -26.0;
-      roi.y_max = 26.0;
-      
-      roi.z_min = -5.0;
-      roi.z_max = 15.0;
-      renderBox (viewer,roi,0);
+    // This was used to visualize the cropping ROI
+    Box roi;
+    roi.x_min = -30.0;
+    roi.x_max = 30.0;
+    
+    roi.y_min = -26.0;
+    roi.y_max = 26.0;
+    
+    roi.z_min = -5.0;
+    roi.z_max = 15.0;
+    renderBox (viewer,roi,0);
   }
   
   if (true) {
-      // This was used to visualize the roof top cropping ROI
-      Box roi;
-      roi.x_min = -2;
-      roi.x_max = 2.6;
-      
-      roi.y_min = -1.7;
-      roi.y_max = 1.7;
-      
-      roi.z_min = -2;
-      roi.z_max = 1;
-      renderBox (viewer,roi,2, Color (0.124, 0.58, 0.620));
+    // This was used to visualize the roof top cropping ROI
+    Box roi;
+    roi.x_min = -2;
+    roi.x_max = 2.6;
+    
+    roi.y_min = -1.7;
+    roi.y_max = 1.7;
+    
+    roi.z_min = -2;
+    roi.z_max = 1;
+    renderBox (viewer,roi,2, Color (0.124, 0.58, 0.620));
   }
   
   /////////////////////////////////////////////////////////////////////////////////////////////
@@ -105,35 +105,35 @@ void cityBlockProcessing (pcl::visualization::PCLVisualizer::Ptr& viewer,
   //
   float resolution = 0.15;
   filteredCloud = ptProcessor->FilterCloud (inputCloud, resolution,
-					    lowEigen, highEigen);
-  if (false) {
-      // Render the filtered cloud
-      renderPointCloud (viewer, filteredCloud, "FilteredCityBlock");
-      
+                                            lowEigen, highEigen);
+  if (!nspKT::g_doSegmentation) {
+    // Render the filtered cloud
+    renderPointCloud (viewer, filteredCloud, "FilteredCityBlock");
+    
   } else if (false) {
-      // Render the full point cloud
-      renderPointCloud (viewer,inputCloud,"CityBlock");
+    // Render the full point cloud
+    renderPointCloud (viewer,inputCloud,"CityBlock");
   }
   
-
+  
   /////////////////////////////////////////////////////////////////////////////////////////////
   /// CLOUD SEGMENTATION -- separate road from obstacles
   //
   std::pair<pcl::PointCloud<pcl::PointXYZI>::Ptr, pcl::PointCloud<pcl::PointXYZI>::Ptr> vRoadObs;
   if ( nspKT::g_doSegmentation ) {
-      int maxIterations = 50;
-      float distanceThreshold = 0.2;
-      vRoadObs = ptProcessor->SegmentPlane ( filteredCloud, maxIterations, distanceThreshold);
+    int maxIterations = 50;
+    float distanceThreshold = 0.2;
+    vRoadObs = ptProcessor->SegmentPlane ( filteredCloud, maxIterations, distanceThreshold);
+    
+    if (true) {
+      // Road is light green
+      renderPointCloud (viewer, vRoadObs.first, "First", Color (0,0.5,0));
       
-      if (true) {
-	  // Road is light green
-	  renderPointCloud (viewer, vRoadObs.first, "First", Color (0,0.5,0));
-
-	  if ( !nspKT::g_doClustering) {
+      if ( !nspKT::g_doClustering) {
 	      // Obstacles are pink
 	      renderPointCloud (viewer, vRoadObs.second, "Second", Color (1,0,1));
-	  }
       }
+    }
   }
   
   //////////////////////////////////////////////////////////////////////////////////////////////
@@ -141,35 +141,35 @@ void cityBlockProcessing (pcl::visualization::PCLVisualizer::Ptr& viewer,
   //
   std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> vClusters;
   if ( nspKT::g_doClustering) {
+    
+    float distTol = 0.8;
+    int minSize = 10;
+    int maxSize = 1500;
+    vClusters = ptProcessor->Clustering ( vRoadObs.second, distTol, minSize, maxSize);
+    
+    // All clusters the same colour (pink) to make them stand out
+    std::vector<Color> vCols({Color(1,0,1)});
+    
+    int count = 1;
+    int vI = 0;
+    for (pcl::PointCloud<pcl::PointXYZI>::Ptr pO : vClusters) {
+      // Render the cloud, each in a different colour (maybe)
+      renderPointCloud (viewer, pO , "Ob_"+std::to_string(vI), vCols[vI % vCols.size()]);
+      vI++;
       
-      float distTol = 0.8;
-      int minSize = 10;
-      int maxSize = 1500;
-      vClusters = ptProcessor->Clustering ( vRoadObs.second, distTol, minSize, maxSize);
-      
-      // All clusters the same colour (pink) to make them stand out
-      std::vector<Color> vCols({Color(1,0,1)});
-
-      int count = 1;
-      int vI = 0;
-      for (pcl::PointCloud<pcl::PointXYZI>::Ptr pO : vClusters) {
-	  // Render the cloud, each in a different colour (maybe)
-	  renderPointCloud (viewer, pO , "Ob_"+std::to_string(vI), vCols[vI % vCols.size()]);
-	  vI++;
-
-	  //-------------------------------------------------------------------------------
-	  /// BOXING
-	  //
-	  if ( !nspKT::g_doPCABoxing ) {
+      //-------------------------------------------------------------------------------
+      /// BOXING
+      //
+      if ( !nspKT::g_doPCABoxing ) {
 	      Box bb = ptProcessor->BoundingBox (pO);
 	      renderBox (viewer, bb, vI+100);
-	  } else {
+      } else {
 	      BoxQ bbQ = k_PCA<pcl::PointXYZI> (pO);
 	      renderBox (viewer, bbQ, vI+100);
-	  }
       }
+    }
   }
-
+  
   return;
 }
 
@@ -285,45 +285,45 @@ void initCamera(CameraAngle setAngle, pcl::visualization::PCLVisualizer::Ptr& vi
     case FPS : viewer->setCameraPosition(-10, 0, 0, 0, 0, 1);
     }
   
-  if(setAngle!=FPS)
+  if (setAngle!=FPS)
     viewer->addCoordinateSystem (1.0);
 }
 
 
 
 void cityBlockStreaming (pcl::visualization::PCLVisualizer::Ptr& viewer ) {
-
-    // Create a cloud processor
-    ProcessPointClouds<pcl::PointXYZI>* ptProcessorI = new ProcessPointClouds<pcl::PointXYZI>;
-
-    // Create the data streaming object
-    std::vector<boost::filesystem::path> stream = ptProcessorI->streamPcd ("../src/sensors/data/pcd/data_1");
-
-    // Cloud object to hold incoming data.
-    pcl::PointCloud<pcl::PointXYZI>::Ptr inputCloudI;
-
-    // Initialize the iterator of the file stream
-    auto streamIterator = stream.begin ();
-
-    while ( !viewer->wasStopped() ) {
-
-	// Clear out the display
-	viewer->removeAllPointClouds ();
-	viewer->removeAllShapes ();
-	
-	// Read in the next cloud
-	inputCloudI = ptProcessorI->loadPcd ((*streamIterator).string());
-	cityBlockProcessing (viewer, ptProcessorI, inputCloudI);
-
-	// Move to next file, or back to beginning
-	streamIterator++;
-	if (streamIterator == stream.end())
+  
+  // Create a cloud processor
+  ProcessPointClouds<pcl::PointXYZI>* ptProcessorI = new ProcessPointClouds<pcl::PointXYZI>;
+  
+  // Create the data streaming object
+  std::vector<boost::filesystem::path> stream = ptProcessorI->streamPcd ("../src/sensors/data/pcd/data_1");
+  
+  // Cloud object to hold incoming data.
+  pcl::PointCloud<pcl::PointXYZI>::Ptr inputCloudI;
+  
+  // Initialize the iterator of the file stream
+  auto streamIterator = stream.begin ();
+  
+  while ( !viewer->wasStopped() ) {
+    
+    // Clear out the display
+    viewer->removeAllPointClouds ();
+    viewer->removeAllShapes ();
+    
+    // Read in the next cloud
+    inputCloudI = ptProcessorI->loadPcd ((*streamIterator).string());
+    cityBlockProcessing (viewer, ptProcessorI, inputCloudI);
+    
+    // Move to next file, or back to beginning
+    streamIterator++;
+    if (streamIterator == stream.end())
 	    streamIterator = stream.begin ();
-
-	viewer->spinOnce();
-    }
-
-    return;
+    
+    viewer->spinOnce();
+  }
+  
+  return;
 }
 
 /*
@@ -338,55 +338,65 @@ void cityBlockStatic (pcl::visualization::PCLVisualizer::Ptr& viewer) {
 
 int main (int argc, char** argv)
 {
-    std::cerr << "usage: ./environment [doseg] [docluster] [doCPA]" << std::endl;
-    std::cout << "starting enviroment" << std::endl;
-    
-    nspKT::g_doSegmentation = false;
-    nspKT::g_doClustering = false;
-    nspKT::g_doPCABoxing = false;
-    
-    switch (argc)
-	{
-	case 2:
+  // Global flags
+  nspKT::g_doSegmentation = true;
+  nspKT::g_doClustering = true;
+  nspKT::g_doPCABoxing = false;
+  
+  std::cerr << "*************************************************************************" << std::endl;
+  std::cerr << "usage: ./environment [doseg] [doclus] [doPCA]" << std::endl;
+  std::cerr << "'environment' uses command line bolean flags: [doseg] [docluster] [doCPA]" << std::endl;
+  std::cerr << " You can set only first OR first and second OR first second and third flag" << std::endl;
+  
+  std::cout << "starting enviroment" << std::endl;
+  
+  
+  switch (argc)
+    {
+    case 2:
 	    {
-		nspKT::g_doSegmentation = std::stoi(argv[1]);
+        nspKT::g_doSegmentation = std::stoi(argv[1]);
 	    }
 	    break;
-	case 3:
+    case 3:
 	    {
-		nspKT::g_doSegmentation = std::stoi(argv[1]);
-		nspKT::g_doClustering = std::stoi(argv[2]);
+        nspKT::g_doSegmentation = std::stoi(argv[1]);
+        nspKT::g_doClustering = std::stoi(argv[2]);
 	    }
 	    break;
-	case 4:
+    case 4:
 	    {
-		nspKT::g_doSegmentation = std::stoi(argv[1]);
-		nspKT::g_doClustering = std::stoi(argv[2]);
-		nspKT::g_doPCABoxing = std::stoi(argv[3]);
+        nspKT::g_doSegmentation = std::stoi(argv[1]);
+        nspKT::g_doClustering = std::stoi(argv[2]);
+        nspKT::g_doPCABoxing = std::stoi(argv[3]);
 	    }
 	    break;
-	}
-
-    pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
-    CameraAngle setAngle = XY;
-    initCamera(setAngle, viewer);
-    
-    bool doCity = true;
-    if ( !doCity ) {
-	std::cout << " SIMPLE HIGHWAY \n";
-	simpleHighway(viewer);
-    } else {
-	std::cout << " CITY BLOCK \n";
-	bool doStream = true;
-	if (doStream)
-	    cityBlockStreaming (viewer);
-	else
-	    cityBlockStatic (viewer);
-	
-	//cityBlock (viewer);
     }
-    
-    while (!viewer->wasStopped ()) {
-	viewer->spinOnce ();
-    } 
+  
+  std::cerr << " Flags are: doseg=" << nspKT::g_doSegmentation << " doclus=" << nspKT::g_doClustering
+            << " doPCA = " << nspKT::g_doPCABoxing << std::endl;
+
+  pcl::visualization::PCLVisualizer::Ptr viewer (new pcl::visualization::PCLVisualizer ("3D Viewer"));
+  CameraAngle setAngle = XY;
+  initCamera(setAngle, viewer);
+  
+  bool doCity = true;
+  if ( !doCity ) {
+    std::cout << " SIMPLE HIGHWAY \n";
+    simpleHighway(viewer);
+  } else {
+    std::cout << " CITY BLOCK \n";
+    bool doStream = true;
+    if (doStream) {
+      // Streaming
+	    cityBlockStreaming (viewer);
+    } else {
+      // Static 1 pcd file processed
+	    cityBlockStatic (viewer);
+    }
+  }
+  
+  while (!viewer->wasStopped ()) {
+    viewer->spinOnce ();
+  } 
 }
